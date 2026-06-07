@@ -5,10 +5,13 @@ export interface GenerationSession {
   customPrompt?: string;
   timestamp: number;
   originalPath?: string;
+  originalWidth?: number;
+  originalHeight?: number;
 }
 
 const SESSION_KEY = "renove_generation";
 const PLAN_KEY = "renove_plan";
+const PREVIEW_SEEN_KEY = "renove_preview_seen";
 
 export function saveGeneration(data: Partial<GenerationSession>) {
   if (typeof window === "undefined") return;
@@ -20,6 +23,8 @@ export function saveGeneration(data: Partial<GenerationSession>) {
     customPrompt: data.customPrompt ?? existing?.customPrompt,
     timestamp: data.timestamp ?? Date.now(),
     originalPath: data.originalPath ?? existing?.originalPath,
+    originalWidth: data.originalWidth ?? existing?.originalWidth,
+    originalHeight: data.originalHeight ?? existing?.originalHeight,
   };
   sessionStorage.setItem(SESSION_KEY, JSON.stringify(merged));
 }
@@ -40,12 +45,35 @@ export function clearGeneration() {
   sessionStorage.removeItem(SESSION_KEY);
 }
 
-export function savePlan(plan: "weekly" | "monthly") {
+export type SubscriptionPlan = "weekly" | "monthly" | "annual";
+
+export function savePlan(plan: SubscriptionPlan) {
   if (typeof window === "undefined") return;
   sessionStorage.setItem(PLAN_KEY, plan);
 }
 
-export function getPlan(): "weekly" | "monthly" {
-  if (typeof window === "undefined") return "weekly";
-  return (sessionStorage.getItem(PLAN_KEY) as "weekly" | "monthly") || "weekly";
+export function getPlan(): SubscriptionPlan {
+  if (typeof window === "undefined") return "monthly";
+  return (sessionStorage.getItem(PLAN_KEY) as SubscriptionPlan) || "monthly";
+}
+
+export function getPlanLabel(plan: SubscriptionPlan): string {
+  switch (plan) {
+    case "weekly":
+      return "Hebdomadaire";
+    case "monthly":
+      return "Mensuel";
+    case "annual":
+      return "Annuel";
+  }
+}
+
+export function isPreviewAnimationSeen(timestamp: number): boolean {
+  if (typeof window === "undefined") return false;
+  return sessionStorage.getItem(PREVIEW_SEEN_KEY) === String(timestamp);
+}
+
+export function markPreviewAnimationSeen(timestamp: number): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(PREVIEW_SEEN_KEY, String(timestamp));
 }

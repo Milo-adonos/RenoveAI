@@ -107,6 +107,40 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Pricing */}
+      <section className="px-5 py-10 max-w-2xl mx-auto w-full">
+        <h2 className="font-display text-xl sm:text-2xl font-bold text-center mb-6">
+          Tarifs
+        </h2>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="card border-2 border-accent relative">
+            <span className="absolute -top-3 left-4 bg-accent text-white text-xs px-3 py-1 rounded-full">
+              LE PLUS POPULAIRE
+            </span>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-muted line-through text-lg">9,99€</span>
+              <span className="text-3xl font-bold text-accent">4,99€</span>
+              <span className="text-muted text-sm">/semaine</span>
+            </div>
+            <p className="text-sm text-muted mt-4">
+              🛡️ Satisfait ou remboursé 7 jours
+            </p>
+          </div>
+          <div className="card border border-muted/20">
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-3xl font-bold text-accent">9,99€</span>
+              <span className="text-muted text-sm">/mois</span>
+            </div>
+            <p className="text-sm text-muted mt-4">
+              🛡️ Satisfait ou remboursé 7 jours
+            </p>
+          </div>
+        </div>
+        <Link href="/upload" className="btn-primary block w-full mt-6">
+          Commencer maintenant →
+        </Link>
+      </section>
+
       {/* FAQ */}
       <section className="px-5 py-10 max-w-2xl mx-auto w-full">
         <h2 className="font-display text-xl sm:text-2xl font-bold text-center mb-6">

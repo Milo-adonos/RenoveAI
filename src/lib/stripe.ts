@@ -5,8 +5,13 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   typescript: true,
 });
 
-export function getPriceId(plan: "weekly" | "monthly") {
-  return plan === "weekly"
-    ? process.env.STRIPE_PRICE_WEEKLY!
-    : process.env.STRIPE_PRICE_MONTHLY!;
+export function getPriceId(plan: "weekly" | "monthly" | "annual") {
+  switch (plan) {
+    case "weekly":
+      return process.env.STRIPE_PRICE_WEEKLY!;
+    case "annual":
+      return process.env.STRIPE_PRICE_ANNUAL!;
+    default:
+      return process.env.STRIPE_PRICE_MONTHLY!;
+  }
 }

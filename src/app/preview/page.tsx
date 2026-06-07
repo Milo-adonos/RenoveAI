@@ -2,18 +2,69 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
-import { Header } from "@/components/Header";
-import { LiveCounter } from "@/components/LiveCounter";
+import { Logo } from "@/components/Logo";
 import { getGeneration } from "@/lib/session";
 import { createClient } from "@/lib/supabase/client";
+
+const TIMER_SECONDS = 10 * 60;
+
+function loadImageAspectRatio(url: string): Promise<number> {
+  return new Promise((resolve) => {
+    const img = new window.Image();
+    img.onload = () => resolve(img.naturalWidth / img.naturalHeight);
+    img.onerror = () => resolve(4 / 3);
+    img.src = url;
+  });
+}
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+}
+
+function vibrateOnClick() {
+  if (navigator.vibrate) {
+    navigator.vibrate(50);
+  }
+}
 
 export default function PreviewPage() {
   const router = useRouter();
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
+  const [aspectRatio, setAspectRatio] = useState<number>(4 / 3);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [timeLeft, setTimeLeft] = useState(TIMER_SECONDS);
+  const [animationDone, setAnimationDone] = useState(false);
+  const [skipTransition, setSkipTransition] = useState(false);
+
+  const isExpired = timeLeft === 0;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeLeft((t) => (t > 0 ? t - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const alreadySeen = sessionStorage.getItem("previewSeen");
+
+    if (alreadySeen) {
+      setSkipTransition(true);
+      setAnimationDone(true);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setAnimationDone(true);
+      sessionStorage.setItem("previewSeen", "true");
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     async function check() {
@@ -22,7 +73,15 @@ export default function PreviewPage() {
         router.push("/upload");
         return;
       }
+
       setGeneratedUrl(session.generatedUrl);
+
+      if (session.originalWidth && session.originalHeight) {
+        setAspectRatio(session.originalWidth / session.originalHeight);
+      } else if (session.originalUrl) {
+        const ratio = await loadImageAspectRatio(session.originalUrl);
+        setAspectRatio(ratio);
+      }
 
       const supabase = createClient();
       const {
@@ -38,7 +97,7 @@ export default function PreviewPage() {
 
         if (
           profile &&
-          ["active", "trialing"].includes(profile.subscription_status)
+          profile.subscription_status === "active"
         ) {
           setIsSubscribed(true);
           router.push("/dashboard");
@@ -63,42 +122,97 @@ export default function PreviewPage() {
   if (isSubscribed) return null;
 
   return (
-    <main className="min-h-screen pb-12">
-      <Header />
+    <main
+      className="min-h-screen pb-12"
+      onContextMenu={(e) => e.preventDefault()}
+      style={{ userSelect: "none", WebkitUserSelect: "none" }}
+    >
+      <header className="px-5 pt-6 max-w-lg mx-auto w-full">
+        <Logo />
+        <div className="flex justify-center py-2">
+          <p
+            className={`text-[18px] font-bold px-4 py-2 rounded-[20px] ${
+              isExpired
+                ? "text-[#C0392B] bg-[#FFF8F3]"
+                : "text-accent bg-[#FFF8F3]"
+            }`}
+          >
+            {isExpired
+              ? "⚠️ Ton rendu a expiré"
+              : `⏳ Ton rendu expire dans ${formatTime(timeLeft)}`}
+          </p>
+        </div>
+      </header>
 
-      <div className="px-4 max-w-lg mx-auto">
-        <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-card">
-          <Image
-            src={generatedUrl}
-            alt="Rendu flouté"
-            fill
-            className="object-cover blur-[20px] scale-105"
-          />
-          <div className="absolute inset-0 bg-black/30" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="bg-white/90 text-foreground font-semibold px-4 py-2 rounded-2xl shadow">
+      <div className="px-5 max-w-lg mx-auto w-full">
+        <div
+          className="w-full rounded-2xl shadow-card"
+          style={{ aspectRatio }}
+        >
+          <div style={{ position: "relative", overflow: "hidden" }}>
+            <img
+              src={generatedUrl}
+              alt="Rendu flouté"
+              style={{
+                width: "100%",
+                display: "block",
+                userSelect: "none",
+                WebkitUserSelect: "none",
+                pointerEvents: "none",
+              }}
+              onContextMenu={(e) => e.preventDefault()}
+              draggable={false}
+            />
+
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                clipPath: animationDone
+                  ? "inset(0 0 0% 0)"
+                  : "inset(0 0 100% 0)",
+                transition: skipTransition
+                  ? "none"
+                  : "clip-path 0.6s ease-in",
+                pointerEvents: "none",
+              }}
+            />
+
+            <Link
+              href="/pricing"
+              onClick={vibrateOnClick}
+              className="absolute top-1/2 left-1/2 animate-preview-pulse bg-accent hover:bg-accent-hover text-white font-bold text-base sm:text-lg px-6 py-3.5 rounded-2xl shadow-lg transition-colors text-center whitespace-nowrap z-10"
+            >
               🔒 Débloque ton rendu
-            </span>
+            </Link>
           </div>
         </div>
 
-        <p className="text-center mt-6 text-muted">
-          Ta pièce a été redesignée — débloque le rendu HD pour le voir et le
-          télécharger
-        </p>
-
-        <div className="flex justify-center mt-4">
-          <LiveCounter />
+        <div className="text-center mt-8">
+          <h1 className="font-hero text-2xl sm:text-3xl font-bold text-foreground leading-snug">
+            Ta pièce a été redesignée
+          </h1>
+          <p className="text-sm text-muted mt-3">
+            ⭐⭐⭐⭐⭐ 4,8/5 — rejoins +2 300 utilisateurs satisfaits
+          </p>
+          <p className="font-hero text-[20px] sm:text-[22px] text-foreground mt-4 leading-relaxed">
+            Débloque le rendu pour le voir et le télécharger !
+          </p>
         </div>
 
-        <Link href="/pricing" className="btn-primary mt-8 inline-block">
-          Débloquer mon rendu →
+        <Link
+          href="/pricing"
+          onClick={vibrateOnClick}
+          className="block w-full bg-accent hover:bg-accent-hover text-white font-bold text-lg py-5 px-6 rounded-2xl text-center mt-8 transition-colors btn-preview-cta"
+        >
+          🔓 Voir mon rendu maintenant →
         </Link>
-
-        <p className="text-xs text-muted text-center mt-3">
-          Essai gratuit 3 jours — puis 4,99€/semaine ou 9,99€/mois — Annulable à
-          tout moment
-        </p>
       </div>
     </main>
   );

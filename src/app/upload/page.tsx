@@ -35,6 +35,24 @@ export default function UploadPage() {
     if (f) handleFile(f);
   }
 
+  async function getImageDimensions(
+    f: File
+  ): Promise<{ width: number; height: number }> {
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(f);
+      const img = new window.Image();
+      img.onload = () => {
+        resolve({ width: img.naturalWidth, height: img.naturalHeight });
+        URL.revokeObjectURL(url);
+      };
+      img.onerror = () => {
+        resolve({ width: 4, height: 3 });
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+    });
+  }
+
   async function handleGenerate() {
     if (!file) {
       setError("Ajoute une photo d'abord");
@@ -49,6 +67,7 @@ export default function UploadPage() {
     setError("");
 
     try {
+      const { width, height } = await getImageDimensions(file);
       const supabase = createClient();
       const ext = file.name.split(".").pop() || "jpg";
       const path = `temp/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -70,6 +89,8 @@ export default function UploadPage() {
 
         saveGeneration({
           originalUrl: dataUrl,
+          originalWidth: width,
+          originalHeight: height,
           style: selectedStyle || undefined,
           customPrompt: customPrompt.trim() || undefined,
           timestamp: Date.now(),
@@ -87,6 +108,8 @@ export default function UploadPage() {
       saveGeneration({
         originalUrl: urlData.publicUrl,
         originalPath: path,
+        originalWidth: width,
+        originalHeight: height,
         style: selectedStyle || undefined,
         customPrompt: customPrompt.trim() || undefined,
         timestamp: Date.now(),

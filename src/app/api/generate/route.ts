@@ -1,24 +1,56 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createGenerationTask, pollTaskResult } from "@/lib/kie";
+import { createGenerationTask, detectSpaceType } from "@/lib/kie";
+import { AI_CHOICE_STYLE, buildFullPrompt } from "@/lib/styles";
 import { getSupabaseConfigStatus } from "@/lib/supabase/config";
 import { uploadImageToStorage } from "@/lib/supabase/storage";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
+import {
+  shouldResetWeeklyCounter,
+  WEEKLY_LIMIT,
+} from "@/lib/weekly-generations";
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      const serviceClient = await createServiceClient();
+      const { data: profile } = await serviceClient
+        .from("profiles")
+        .select("subscription_plan, weekly_generations_used, weekly_reset_date")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.subscription_plan === "weekly") {
+        let used = profile.weekly_generations_used ?? 0;
+        if (shouldResetWeeklyCounter(profile.weekly_reset_date)) {
+          used = 0;
+        }
+        if (used >= WEEKLY_LIMIT) {
+          return NextResponse.json(
+            { error: "Weekly generation limit reached" },
+            { status: 429 }
+          );
+        }
+      }
+    }
+
     const body = await request.json();
-    const { imageUrl, prompt, style, customPrompt } = body;
+    const { imageUrl, style, customPrompt } = body;
 
     console.log("[generate] Étape 1 — Requête reçue");
     console.log("[generate] Config Supabase:", getSupabaseConfigStatus());
     console.log("[generate] imageUrl présent:", !!imageUrl);
     console.log("[generate] imageUrl type:", imageUrl?.startsWith("data:") ? "base64" : imageUrl?.startsWith("http") ? "url" : "inconnu");
-    console.log("[generate] prompt:", prompt?.slice(0, 80));
     console.log("[generate] style:", style);
 
-    if (!imageUrl || !prompt) {
-      console.error("[generate] Erreur — imageUrl ou prompt manquant");
+    if (!imageUrl) {
+      console.error("[generate] Erreur — imageUrl manquant");
       return NextResponse.json(
-        { error: "imageUrl and prompt are required" },
+        { error: "imageUrl is required" },
         { status: 400 }
       );
     }
@@ -61,38 +93,26 @@ export async function POST(request: NextRequest) {
       console.log("[generate] Étape 2 — URL déjà publique, pas d'upload nécessaire");
     }
 
-    console.log("[generate] Étape 3 — Appel Kie.ai...");
-    const taskId = await createGenerationTask(finalImageUrl, prompt);
-    console.log("[generate] Task ID:", taskId);
+    let fullPrompt: string;
 
-    console.log("[generate] Étape 4 — Polling résultat...");
-    const generatedUrl = await pollTaskResult(taskId);
-    console.log("[generate] Image générée:", generatedUrl);
-
-    console.log("[generate] Étape 5 — Sauvegarde image générée...");
-    const imageRes = await fetch(generatedUrl);
-    const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
-    const genPath = `temp/${Date.now()}-generated.jpg`;
-
-    const genResult = await uploadImageToStorage(
-      imageBuffer,
-      genPath,
-      "generated"
-    );
-
-    const savedUrl = "error" in genResult ? generatedUrl : genResult.url;
-
-    if ("error" in genResult) {
-      console.warn("[generate] Sauvegarde generated échouée, URL Kie utilisée:", genResult.error);
+    if (customPrompt?.trim()) {
+      fullPrompt = buildFullPrompt(style, customPrompt);
+      console.log("[generate] Étape 3 — Prompt custom");
+    } else if (style === AI_CHOICE_STYLE) {
+      fullPrompt = buildFullPrompt(style);
+      console.log("[generate] Étape 3 — Mode Laisse l'IA décider");
+    } else {
+      console.log("[generate] Étape 3 — Détection du type d'espace...");
+      const spaceType = await detectSpaceType(finalImageUrl);
+      console.log("[generate] Type d'espace détecté:", spaceType);
+      fullPrompt = buildFullPrompt(style, null, spaceType);
     }
 
-    console.log("[generate] Étape 6 — Terminé ✓");
+    console.log("[generate] Étape 4 — Appel Kie.ai...");
+    const taskId = await createGenerationTask(finalImageUrl, fullPrompt);
+    console.log("[generate] Task ID:", taskId);
 
-    return NextResponse.json({
-      generatedUrl: savedUrl,
-      style,
-      customPrompt,
-    });
+    return NextResponse.json({ taskId, style, customPrompt });
   } catch (error) {
     console.error("[generate] Erreur fatale:", error);
     return NextResponse.json(

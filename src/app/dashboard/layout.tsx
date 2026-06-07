@@ -1,36 +1,36 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { DashboardNav } from "@/components/DashboardNav";
-import { WelcomeToast } from "@/components/WelcomeToast";
+import { DashboardShell } from "@/components/DashboardShell";
+import { isBypassAuthEnabled } from "@/lib/dev-bypass";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const bypass = isBypassAuthEnabled();
+  let userName = "Développeur";
 
-  if (!user) redirect("/auth/login");
+  if (!bypass) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+    if (!user) redirect("/auth/login");
 
-  const userName =
-    profile?.full_name || user.user_metadata?.full_name || user.email?.split("@")[0];
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
 
-  return (
-    <div className="flex min-h-screen">
-      <DashboardNav userName={userName} />
-      <main className="flex-1 p-6 pb-24 md:pb-6 max-w-5xl">
-        <WelcomeToast />
-        {children}
-      </main>
-    </div>
-  );
+    userName =
+      profile?.full_name ||
+      user.user_metadata?.full_name ||
+      user.email?.split("@")[0] ||
+      "Utilisateur";
+  }
+
+  return <DashboardShell userName={userName}>{children}</DashboardShell>;
 }

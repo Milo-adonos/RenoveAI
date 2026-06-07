@@ -31,19 +31,18 @@ export async function POST(request: NextRequest) {
     case "customer.subscription.updated": {
       const subscription = event.data.object as Stripe.Subscription;
       const userId = subscription.metadata.supabase_user_id;
-      const plan = (subscription.metadata.plan || "weekly") as
+      const plan = (subscription.metadata.plan || "monthly") as
         | "weekly"
-        | "monthly";
+        | "monthly"
+        | "annual";
 
       if (userId) {
         const status =
-          subscription.status === "trialing"
-            ? "trialing"
-            : subscription.status === "active"
-              ? "active"
-              : subscription.status === "canceled"
-                ? "canceled"
-                : "inactive";
+          subscription.status === "active"
+            ? "active"
+            : subscription.status === "canceled"
+              ? "canceled"
+              : "inactive";
 
         await supabase
           .from("profiles")
@@ -53,9 +52,6 @@ export async function POST(request: NextRequest) {
             subscription_end_date: new Date(
               subscription.current_period_end * 1000
             ).toISOString(),
-            trial_end_date: subscription.trial_end
-              ? new Date(subscription.trial_end * 1000).toISOString()
-              : null,
           })
           .eq("id", userId);
       }

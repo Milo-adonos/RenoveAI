@@ -6,9 +6,10 @@ import { stripe, getPriceId } from "@/lib/stripe";
 
 export async function GET(request: NextRequest) {
   try {
-    const plan = (request.nextUrl.searchParams.get("plan") || "weekly") as
+    const plan = (request.nextUrl.searchParams.get("plan") || "monthly") as
       | "weekly"
-      | "monthly";
+      | "monthly"
+      | "annual";
 
     const supabase = await createClient();
     const {
@@ -72,7 +73,6 @@ export async function GET(request: NextRequest) {
         },
       ],
       subscription_data: {
-        trial_period_days: 3,
         metadata: { plan },
       },
       metadata: { plan, supabase_user_id: user.id },

@@ -1,23 +1,57 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/types/database";
+import { isBypassAuthEnabled, getDevBypassUser } from "@/lib/dev-bypass";
+import { getNextMonday, WEEKLY_LIMIT } from "@/lib/weekly-generations";
 
-const statusLabels: Record<string, { label: string; color: string }> = {
-  active: { label: "Actif", color: "bg-green-100 text-green-700" },
-  trialing: { label: "Essai gratuit", color: "bg-orange-100 text-orange-700" },
-  inactive: { label: "Inactif", color: "bg-red-100 text-red-700" },
-  canceled: { label: "Annulé", color: "bg-red-100 text-red-700" },
+const DEV_WEEKLY_KEY = "renove_dev_weekly_used";
+
+type LimitInfo = {
+  plan: string;
+  weeklyUsed: number;
+  weeklyRemaining: number;
+  resetDate: string;
 };
 
 export default function AccountPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [limit, setLimit] = useState<LimitInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
+      if (isBypassAuthEnabled()) {
+        const devUser = getDevBypassUser();
+        const weeklyUsed = Number(
+          localStorage.getItem(DEV_WEEKLY_KEY) || "0"
+        );
+        setProfile({
+          id: devUser?.id || "dev-user-123",
+          email: devUser?.email || "dev@renoveai.com",
+          full_name: "Développeur",
+          avatar_url: null,
+          stripe_customer_id: null,
+          subscription_status: devUser?.subscription_status || "active",
+          subscription_plan: devUser?.subscription_plan || "monthly",
+          subscription_end_date: null,
+          trial_end_date: null,
+          weekly_generations_used: weeklyUsed,
+          weekly_reset_date: null,
+          created_at: new Date().toISOString(),
+        });
+        setLimit({
+          plan: devUser?.subscription_plan || "monthly",
+          weeklyUsed,
+          weeklyRemaining: Math.max(0, WEEKLY_LIMIT - weeklyUsed),
+          resetDate: getNextMonday().toISOString(),
+        });
+        setLoading(false);
+        return;
+      }
+
       const supabase = createClient();
       const {
         data: { user },
@@ -32,94 +66,131 @@ export default function AccountPage() {
         .single();
 
       setProfile(data);
+
+      const limitRes = await fetch("/api/generations/limit");
+      if (limitRes.ok) {
+        const limitData = await limitRes.json();
+        setLimit({
+          plan: limitData.plan,
+          weeklyUsed: limitData.weeklyUsed,
+          weeklyRemaining: limitData.weeklyRemaining,
+          resetDate: limitData.resetDate,
+        });
+      }
+
       setLoading(false);
     }
 
     load();
   }, []);
 
-  async function handleLogout() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    window.location.href = "/";
-  }
-
-  if (loading) {
+  if (loading || !profile) {
     return <div className="animate-pulse text-muted">Chargement...</div>;
   }
 
-  const status = statusLabels[profile?.subscription_status || "inactive"];
+  const isActive = profile.subscription_status === "active";
+  const isWeekly = profile.subscription_plan === "weekly";
+  const firstName = profile.full_name?.split(" ")[0] || "Utilisateur";
+  const initial = firstName[0]?.toUpperCase() || "?";
+  const weeklyRemaining = limit?.weeklyRemaining ?? WEEKLY_LIMIT;
+  const weeklyUsed = limit?.weeklyUsed ?? 0;
+  const progressPct = (weeklyUsed / WEEKLY_LIMIT) * 100;
 
   return (
     <div className="max-w-lg">
-      <h1 className="font-display text-3xl font-bold mb-8">Mon compte</h1>
+      <h1 className="font-hero text-2xl font-bold mb-8">Mon compte</h1>
 
-      {/* Profile */}
       <div className="card mb-6">
-        <h2 className="font-semibold mb-4">Profil</h2>
         <div className="flex items-center gap-4">
-          {profile?.avatar_url ? (
-            <Image
-              src={profile.avatar_url}
-              alt="Avatar"
-              width={56}
-              height={56}
-              className="rounded-full"
-            />
-          ) : (
-            <div className="w-14 h-14 bg-accent/10 rounded-full flex items-center justify-center text-accent text-xl">
-              {profile?.full_name?.[0] || "?"}
-            </div>
-          )}
+          <div
+            className="w-[60px] h-[60px] rounded-full bg-accent text-white flex items-center justify-center font-bold text-xl flex-shrink-0"
+          >
+            {initial}
+          </div>
           <div>
-            <p className="font-medium">{profile?.full_name || "Utilisateur"}</p>
-            <p className="text-sm text-muted">{profile?.email}</p>
+            <p className="font-hero text-xl font-bold text-foreground">
+              {profile.full_name || firstName}
+            </p>
+            <p className="text-sm text-muted">{profile.email}</p>
           </div>
         </div>
       </div>
 
-      {/* Subscription */}
       <div className="card mb-6">
-        <h2 className="font-semibold mb-4">Abonnement</h2>
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-muted">Plan actuel</span>
-            <span className="font-medium">
-              {profile?.subscription_plan === "monthly"
+        <h2 className="font-semibold mb-4">Mon abonnement</h2>
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="bg-accent text-white text-xs font-semibold px-3 py-1 rounded-full">
+              {profile.subscription_plan === "monthly"
                 ? "Mensuel — 9,99€/mois"
                 : "Hebdomadaire — 4,99€/semaine"}
             </span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-muted">Statut</span>
             <span
-              className={`text-xs px-3 py-1 rounded-full font-medium ${status.color}`}
+              className={`text-xs px-3 py-1 rounded-full font-medium ${
+                isActive
+                  ? "bg-green-100 text-green-700"
+                  : "bg-red-100 text-red-700"
+              }`}
             >
-              {status.label}
+              {isActive ? "Actif" : "Inactif"}
             </span>
           </div>
-          {profile?.subscription_end_date && (
-            <div className="flex justify-between items-center">
-              <span className="text-muted">Prochain renouvellement</span>
-              <span className="text-sm">
-                {new Date(profile.subscription_end_date).toLocaleDateString(
-                  "fr-FR"
-                )}
-              </span>
-            </div>
+          {profile.subscription_end_date && (
+            <p className="text-sm text-muted">
+              Renouvellement le{" "}
+              {new Date(profile.subscription_end_date).toLocaleDateString(
+                "fr-FR",
+                { day: "numeric", month: "long", year: "numeric" }
+              )}
+            </p>
           )}
         </div>
+      </div>
+
+      <div className="card mb-6">
+        <h2 className="font-semibold mb-4">Créations disponibles</h2>
+        {!isWeekly ? (
+          <p className="font-hero text-4xl font-bold text-accent">∞ Illimité</p>
+        ) : (
+          <div>
+            <p className="text-lg font-bold text-foreground mb-3">
+              {weeklyRemaining} / {WEEKLY_LIMIT} créations restantes cette
+              semaine
+            </p>
+            <div className="h-2 bg-muted/20 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  weeklyRemaining === 0 ? "bg-[#C0392B]" : "bg-accent"
+                }`}
+                style={{ width: `${Math.min(100, progressPct)}%` }}
+              />
+            </div>
+            {weeklyRemaining === 0 && (
+              <div className="mt-4">
+                <p className="text-sm text-[#C0392B] mb-3">
+                  Tu as utilisé toutes tes créations cette semaine. Passe au
+                  mensuel pour un accès illimité.
+                </p>
+                <Link
+                  href="/pricing"
+                  className="inline-block bg-accent hover:bg-accent-hover text-white font-semibold text-sm py-2.5 px-4 rounded-xl transition-colors"
+                >
+                  Passer au mensuel →
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="border-t border-muted/20 pt-6">
         <a
           href="/api/stripe/portal"
-          className="btn-primary mt-6 inline-block text-center"
+          className="inline-block text-[13px] text-[#8B7D6B] border border-[#8B7D6B] px-4 py-2 rounded-lg hover:bg-background transition-colors"
         >
           Gérer mon abonnement
         </a>
       </div>
-
-      <button onClick={handleLogout} className="btn-outline w-full">
-        Se déconnecter
-      </button>
     </div>
   );
 }

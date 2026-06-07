@@ -57,8 +57,7 @@ export default function SignupPage() {
         </div>
 
         <span className="inline-block bg-accent/10 text-accent text-sm px-3 py-1 rounded-full mb-4">
-          Plan {plan === "weekly" ? "Hebdomadaire" : "Mensuel"} — Essai 3 jours
-          gratuit
+          🛡️ Satisfait ou remboursé 7 jours
         </span>
 
         <h1 className="font-display text-3xl font-bold mb-2">Crée ton compte</h1>

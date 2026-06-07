@@ -9,6 +9,8 @@ create table if not exists profiles (
   subscription_plan text,
   subscription_end_date timestamptz,
   trial_end_date timestamptz,
+  weekly_generations_used integer default 0,
+  weekly_reset_date timestamptz,
   created_at timestamptz default now()
 );
 

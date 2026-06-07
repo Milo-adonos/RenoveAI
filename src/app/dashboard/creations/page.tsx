@@ -7,22 +7,133 @@ import { createClient } from "@/lib/supabase/client";
 import { getGeneration, clearGeneration } from "@/lib/session";
 import type { Generation } from "@/types/database";
 import { getStyleLabel } from "@/lib/styles";
+import { useDashboard } from "@/contexts/DashboardContext";
+import { isBypassAuthEnabled } from "@/lib/dev-bypass";
+import { addDevCreation, getDevCreations } from "@/lib/dev-creations";
+
+function useAspectRatio(url: string): number {
+  const [ratio, setRatio] = useState(4 / 3);
+
+  useEffect(() => {
+    const img = new window.Image();
+    img.onload = () => setRatio(img.naturalWidth / img.naturalHeight);
+    img.onerror = () => setRatio(4 / 3);
+    img.src = url;
+  }, [url]);
+
+  return ratio;
+}
+
+function CreationCard({
+  gen,
+  onViewOriginal,
+}: {
+  gen: Generation;
+  onViewOriginal: (url: string) => void;
+}) {
+  const aspectRatio = useAspectRatio(gen.original_image_url);
+  const dateStr = new Date(gen.created_at).toLocaleDateString("fr-FR");
+  const styleSlug = (gen.style || "rendu").toLowerCase().replace(/\s+/g, "-");
+
+  async function downloadImage() {
+    const res = await fetch(gen.generated_image_url);
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `renoveai-${styleSlug}-${dateStr.replace(/\//g, "-")}.jpg`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  return (
+    <div className="card p-0 overflow-hidden flex flex-col">
+      <div className="relative w-full" style={{ aspectRatio }}>
+        <Image
+          src={gen.generated_image_url}
+          alt={gen.style || "Création"}
+          fill
+          className="object-cover"
+          sizes="(max-width: 768px) 50vw, 33vw"
+          unoptimized
+        />
+        <div className="absolute bottom-0 left-0 right-0 flex items-end justify-between p-2 bg-gradient-to-t from-black/50 to-transparent">
+          <span className="text-white/90 text-xs">{dateStr}</span>
+          {gen.style && (
+            <span className="bg-accent text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
+              {getStyleLabel(gen.style)}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="p-3 flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={downloadImage}
+          className="w-full bg-accent hover:bg-accent-hover text-white font-semibold text-sm py-2.5 rounded-xl transition-colors"
+        >
+          ⬇ Télécharger
+        </button>
+        <button
+          type="button"
+          onClick={() => onViewOriginal(gen.original_image_url)}
+          className="w-full border border-accent text-accent font-medium text-sm py-2.5 rounded-xl hover:bg-accent/5 transition-colors"
+        >
+          Voir l&apos;original
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PendingCard({ aspectRatio }: { aspectRatio: number }) {
+  return (
+    <div className="card p-0 overflow-hidden animate-pulse">
+      <div
+        className="w-full bg-accent/10 flex items-center justify-center"
+        style={{ aspectRatio }}
+      >
+        <p className="text-accent font-medium text-sm px-4 text-center">
+          En cours de génération...
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function CreationsPage() {
+  const { pendingGeneration, refreshCreations } = useDashboard();
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewOriginal, setViewOriginal] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
+      if (isBypassAuthEnabled()) {
+        const session = getGeneration();
+        if (session?.generatedUrl && session?.originalUrl) {
+          addDevCreation({
+            original_image_url: session.originalUrl,
+            generated_image_url: session.generatedUrl,
+            style: session.style || null,
+            custom_prompt: session.customPrompt || null,
+          });
+          clearGeneration();
+        }
+        setGenerations(getDevCreations());
+        setLoading(false);
+        return;
+      }
+
       const supabase = createClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
-      if (!user) return;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
-      // Save pending generation from session after payment
       const session = getGeneration();
       if (session?.generatedUrl && session?.originalUrl) {
         await fetch("/api/generations/save", {
@@ -50,79 +161,39 @@ export default function CreationsPage() {
     }
 
     load();
-  }, []);
-
-  async function downloadImage(url: string, filename: string) {
-    const res = await fetch(url);
-    const blob = await res.blob();
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
+  }, [refreshCreations]);
 
   if (loading) {
     return <div className="animate-pulse text-muted">Chargement...</div>;
   }
 
+  const hasContent = generations.length > 0 || pendingGeneration;
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="font-display text-3xl font-bold">Mes créations</h1>
-        <Link href="/upload" className="btn-primary !w-auto px-6 py-3 hidden md:inline-block">
-          + Nouvelle création
-        </Link>
-      </div>
+      <h1 className="font-hero text-2xl font-bold mb-6">Mes créations</h1>
 
-      {generations.length === 0 ? (
+      {!hasContent ? (
         <div className="card text-center py-16">
-          <span className="text-5xl mb-4 block">🖼️</span>
-          <p className="text-muted mb-6">
-            Aucune création pour l&apos;instant — commence maintenant !
-          </p>
-          <Link href="/upload" className="btn-primary max-w-xs mx-auto">
-            + Nouvelle création
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-accent/10 flex items-center justify-center">
+            <span className="text-3xl text-accent">✦</span>
+          </div>
+          <p className="text-muted mb-6">Aucune création pour l&apos;instant</p>
+          <Link href="/dashboard/new" className="btn-primary max-w-xs mx-auto">
+            Créer ma première pièce →
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {pendingGeneration && (
+            <PendingCard aspectRatio={pendingGeneration.aspectRatio} />
+          )}
           {generations.map((gen) => (
-            <div key={gen.id} className="card p-3">
-              <div className="relative aspect-square rounded-xl overflow-hidden mb-3">
-                <Image
-                  src={gen.generated_image_url}
-                  alt={gen.style || "Création"}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 50vw, 33vw"
-                />
-              </div>
-              <p className="text-xs text-muted">
-                {new Date(gen.created_at).toLocaleDateString("fr-FR")}
-              </p>
-              {gen.style && (
-                <p className="text-sm font-medium truncate">
-                  {getStyleLabel(gen.style)}
-                </p>
-              )}
-              <div className="flex gap-2 mt-2">
-                <button
-                  onClick={() =>
-                    downloadImage(gen.generated_image_url, `renove-${gen.id}.jpg`)
-                  }
-                  className="flex-1 text-xs bg-accent/10 text-accent py-2 rounded-xl"
-                >
-                  ⬇️ Télécharger
-                </button>
-                <button
-                  onClick={() => setViewOriginal(gen.original_image_url)}
-                  className="flex-1 text-xs bg-background text-muted py-2 rounded-xl"
-                >
-                  👁️ Original
-                </button>
-              </div>
-            </div>
+            <CreationCard
+              key={gen.id}
+              gen={gen}
+              onViewOriginal={setViewOriginal}
+            />
           ))}
         </div>
       )}
@@ -131,13 +202,19 @@ export default function CreationsPage() {
         <div
           className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
           onClick={() => setViewOriginal(null)}
+          role="presentation"
         >
-          <div className="relative max-w-2xl w-full aspect-video">
+          <div
+            className="relative max-w-2xl w-full max-h-[85vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
             <Image
               src={viewOriginal}
               alt="Original"
-              fill
-              className="object-contain"
+              width={1200}
+              height={900}
+              className="w-full h-auto max-h-[85vh] object-contain rounded-2xl"
+              unoptimized
             />
           </div>
         </div>

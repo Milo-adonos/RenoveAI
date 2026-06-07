@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import {
+  shouldResetWeeklyCounter,
+  WEEKLY_LIMIT,
+} from "@/lib/weekly-generations";
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,6 +50,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const { data: profile } = await serviceClient
+      .from("profiles")
+      .select("subscription_plan, weekly_generations_used, weekly_reset_date")
+      .eq("id", user.id)
+      .single();
+
+    const plan = profile?.subscription_plan || "monthly";
+    let weeklyUsed = profile?.weekly_generations_used ?? 0;
+
+    if (shouldResetWeeklyCounter(profile?.weekly_reset_date)) {
+      weeklyUsed = 0;
+    }
+
+    if (plan === "weekly" && weeklyUsed >= WEEKLY_LIMIT) {
+      return NextResponse.json(
+        { error: "Weekly generation limit reached" },
+        { status: 429 }
+      );
+    }
+
     const { data, error } = await serviceClient
       .from("generations")
       .insert({
@@ -60,6 +84,16 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (plan === "weekly") {
+      await serviceClient
+        .from("profiles")
+        .update({
+          weekly_generations_used: weeklyUsed + 1,
+          weekly_reset_date: new Date().toISOString(),
+        })
+        .eq("id", user.id);
     }
 
     return NextResponse.json({ generation: data });
