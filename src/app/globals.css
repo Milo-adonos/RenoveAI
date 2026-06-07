@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply w-full bg-accent hover:bg-accent-hover text-white font-semibold py-4 px-6 rounded-2xl transition-colors duration-200 text-center;
+  }
+
+  .btn-outline {
+    @apply border-2 border-accent text-accent hover:bg-accent hover:text-white font-medium py-2 px-4 rounded-2xl transition-colors duration-200;
+  }
+
+  .card {
+    @apply bg-card rounded-2xl shadow-card p-6;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
