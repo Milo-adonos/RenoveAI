@@ -61,3 +61,18 @@ export async function uploadImageToStorage(
 
   return { url: urlData.publicUrl };
 }
+
+export async function persistGeneratedImageFromUrl(
+  sourceUrl: string,
+  userId: string
+): Promise<{ url: string } | { error: string }> {
+  const response = await fetch(sourceUrl);
+  if (!response.ok) {
+    return { error: "Impossible de récupérer l'image générée" };
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  const path = `permanent/${userId}/${Date.now()}-generated.jpg`;
+
+  return uploadImageToStorage(buffer, path, "generated");
+}

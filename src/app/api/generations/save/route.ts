@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { persistGeneratedImageFromUrl } from "@/lib/supabase/storage";
 import {
   shouldResetWeeklyCounter,
   WEEKLY_LIMIT,
@@ -70,12 +71,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let finalGeneratedUrl = generatedUrl;
+    const isAlreadyStored =
+      generatedUrl.includes(".supabase.co/storage/") &&
+      generatedUrl.includes("/generated/");
+
+    if (!isAlreadyStored) {
+      const persisted = await persistGeneratedImageFromUrl(
+        generatedUrl,
+        user.id
+      );
+      if ("error" in persisted) {
+        return NextResponse.json({ error: persisted.error }, { status: 500 });
+      }
+      finalGeneratedUrl = persisted.url;
+    }
+
     const { data, error } = await serviceClient
       .from("generations")
       .insert({
         user_id: user.id,
         original_image_url: finalOriginalUrl,
-        generated_image_url: generatedUrl,
+        generated_image_url: finalGeneratedUrl,
         style: style || null,
         custom_prompt: customPrompt || null,
       })

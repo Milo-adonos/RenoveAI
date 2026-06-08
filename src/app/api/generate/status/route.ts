@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProgressForState, getTaskStatus } from "@/lib/kie";
-import { uploadImageToStorage } from "@/lib/supabase/storage";
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,29 +15,20 @@ export async function GET(request: NextRequest) {
 
     if (status.state === "fail") {
       return NextResponse.json(
-        { state: status.state, progress, error: status.failMsg || "Generation failed" },
+        {
+          state: status.state,
+          progress,
+          error: status.failMsg || "Generation failed",
+        },
         { status: 500 }
       );
     }
 
     if (status.state === "success" && status.resultUrl) {
-      const imageRes = await fetch(status.resultUrl);
-      const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
-      const genPath = `temp/${Date.now()}-generated.jpg`;
-
-      const genResult = await uploadImageToStorage(
-        imageBuffer,
-        genPath,
-        "generated"
-      );
-
-      const generatedUrl =
-        "error" in genResult ? status.resultUrl : genResult.url;
-
       return NextResponse.json({
         state: status.state,
         progress: 100,
-        generatedUrl,
+        generatedUrl: status.resultUrl,
       });
     }
 

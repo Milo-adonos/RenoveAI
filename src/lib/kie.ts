@@ -1,6 +1,7 @@
 import type { SpaceType } from "@/lib/styles";
 
 const KIE_API_BASE = "https://api.kie.ai";
+const KIE_RESOLUTION = process.env.KIE_RESOLUTION === "2K" ? "2K" : "1K";
 
 const DETECTABLE_SPACE_TYPES: SpaceType[] = [
   "bedroom",
@@ -155,7 +156,7 @@ export async function createGenerationTask(
         prompt,
         image_input: [imageUrl],
         aspect_ratio: "auto",
-        resolution: "2K",
+        resolution: KIE_RESOLUTION,
         output_format: "jpg",
       },
     }),

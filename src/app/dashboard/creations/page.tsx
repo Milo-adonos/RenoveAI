@@ -36,14 +36,8 @@ function CreationCard({
   const dateStr = new Date(gen.created_at).toLocaleDateString("fr-FR");
   const styleSlug = (gen.style || "rendu").toLowerCase().replace(/\s+/g, "-");
 
-  async function downloadImage() {
-    const res = await fetch(gen.generated_image_url);
-    const blob = await res.blob();
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `renoveai-${styleSlug}-${dateStr.replace(/\//g, "-")}.jpg`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+  function downloadImage() {
+    window.location.assign(`/api/generations/download?id=${gen.id}`);
   }
 
   return (

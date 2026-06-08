@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createGenerationTask, detectSpaceType } from "@/lib/kie";
+import { createGenerationTask } from "@/lib/kie";
 import { AI_CHOICE_STYLE, buildFullPrompt } from "@/lib/styles";
 import { getSupabaseConfigStatus } from "@/lib/supabase/config";
 import { uploadImageToStorage } from "@/lib/supabase/storage";
@@ -102,10 +102,8 @@ export async function POST(request: NextRequest) {
       fullPrompt = buildFullPrompt(style);
       console.log("[generate] Étape 3 — Mode Laisse l'IA décider");
     } else {
-      console.log("[generate] Étape 3 — Détection du type d'espace...");
-      const spaceType = await detectSpaceType(finalImageUrl);
-      console.log("[generate] Type d'espace détecté:", spaceType);
-      fullPrompt = buildFullPrompt(style, null, spaceType);
+      fullPrompt = buildFullPrompt(style, null, "other");
+      console.log("[generate] Étape 3 — Prompt style (sans détection d'espace)");
     }
 
     console.log("[generate] Étape 4 — Appel Kie.ai...");

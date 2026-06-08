@@ -106,7 +106,7 @@ const tips = [
   },
 ];
 
-const POLL_INTERVAL_MS = 2500;
+const POLL_INTERVAL_MS = 1500;
 const TICK_MS = 100;
 const TIMEOUT_MS = 180_000;
 const PATIENCE_AFTER_MS = 20_000;
@@ -266,6 +266,10 @@ export default function LoadingPage() {
           if (statusData.state === "fail") {
             fail(statusData.error || "La génération IA a échoué");
             return;
+          }
+
+          if (typeof statusData.progress === "number") {
+            setProgress((prev) => Math.max(prev, statusData.progress));
           }
 
           if (
