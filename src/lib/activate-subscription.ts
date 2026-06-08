@@ -1,6 +1,10 @@
 import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { createServiceClient } from "@/lib/supabase/server";
+import {
+  getSubscriptionPeriodEnd,
+  mapSubscriptionStatus,
+} from "@/lib/subscription-sync";
 
 export async function activateSubscriptionFromSession(
   session: Stripe.Checkout.Session
@@ -33,17 +37,12 @@ export async function activateSubscriptionFromSession(
   const updates: {
     subscription_status: string;
     subscription_plan: string;
-    subscription_end_date: string;
+    subscription_end_date: string | null;
     full_name?: string;
   } = {
-    subscription_status:
-      subscription.status === "active" || subscription.status === "trialing"
-        ? "active"
-        : "inactive",
+    subscription_status: mapSubscriptionStatus(subscription.status),
     subscription_plan: plan,
-    subscription_end_date: new Date(
-      subscription.current_period_end * 1000
-    ).toISOString(),
+    subscription_end_date: getSubscriptionPeriodEnd(subscription),
   };
 
   if (session.customer_details?.name) {

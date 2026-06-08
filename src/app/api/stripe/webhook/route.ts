@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { activateSubscriptionFromSession } from "@/lib/activate-subscription";
+import { syncSubscriptionToProfile } from "@/lib/subscription-sync";
 import { createServiceClient } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -25,78 +28,73 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  const supabase = await createServiceClient();
+  try {
+    const supabase = await createServiceClient();
 
-  switch (event.type) {
-    case "checkout.session.completed": {
-      const session = event.data.object as Stripe.Checkout.Session;
-      await activateSubscriptionFromSession(session);
-      break;
-    }
-
-    case "customer.subscription.created":
-    case "customer.subscription.updated": {
-      const subscription = event.data.object as Stripe.Subscription;
-      const userId = subscription.metadata.supabase_user_id;
-      const plan = (subscription.metadata.plan || "monthly") as
-        | "weekly"
-        | "monthly"
-        | "annual";
-
-      if (userId) {
-        const status =
-          subscription.status === "active"
-            ? "active"
-            : subscription.status === "canceled"
-              ? "canceled"
-              : "inactive";
-
-        await supabase
-          .from("profiles")
-          .update({
-            subscription_status: status,
-            subscription_plan: plan,
-            subscription_end_date: new Date(
-              subscription.current_period_end * 1000
-            ).toISOString(),
-          })
-          .eq("id", userId);
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        await activateSubscriptionFromSession(session);
+        break;
       }
-      break;
-    }
 
-    case "customer.subscription.deleted": {
-      const subscription = event.data.object as Stripe.Subscription;
-      const userId = subscription.metadata.supabase_user_id;
-
-      if (userId) {
-        await supabase
-          .from("profiles")
-          .update({ subscription_status: "canceled" })
-          .eq("id", userId);
+      case "customer.subscription.created":
+      case "customer.subscription.updated": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const result = await syncSubscriptionToProfile(supabase, subscription);
+        if (!result.ok) {
+          console.error(
+            `[webhook] ${event.type} sync failed:`,
+            result.error
+          );
+        }
+        break;
       }
-      break;
-    }
 
-    case "invoice.payment_failed": {
-      const invoice = event.data.object as Stripe.Invoice;
-      const customerId = invoice.customer as string;
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const userId = subscription.metadata?.supabase_user_id;
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("stripe_customer_id", customerId)
-        .single();
-
-      if (profile) {
-        await supabase
-          .from("profiles")
-          .update({ subscription_status: "inactive" })
-          .eq("id", profile.id);
+        if (userId) {
+          await supabase
+            .from("profiles")
+            .update({ subscription_status: "canceled" })
+            .eq("id", userId);
+        }
+        break;
       }
-      break;
+
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId =
+          typeof invoice.customer === "string"
+            ? invoice.customer
+            : invoice.customer?.id;
+
+        if (customerId) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("stripe_customer_id", customerId)
+            .single();
+
+          if (profile) {
+            await supabase
+              .from("profiles")
+              .update({ subscription_status: "inactive" })
+              .eq("id", profile.id);
+          }
+        }
+        break;
+      }
     }
+
+    return NextResponse.json({ received: true });
+  } catch (error) {
+    console.error("[webhook] Unhandled error:", error);
+    return NextResponse.json(
+      { error: "Webhook handler failed" },
+      { status: 500 }
+    );
   }
-
-  return NextResponse.json({ received: true });
 }

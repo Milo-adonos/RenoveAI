@@ -108,7 +108,7 @@ const tips = [
 
 const POLL_INTERVAL_MS = 2500;
 const TICK_MS = 100;
-const TIMEOUT_MS = 90_000;
+const TIMEOUT_MS = 180_000;
 const PATIENCE_AFTER_MS = 20_000;
 const MESSAGE_INTERVAL_MS = 6_000;
 const TIP_INTERVAL_MS = 6_000;
@@ -157,10 +157,11 @@ export default function LoadingPage() {
   const [hasFailed, setHasFailed] = useState(false);
   const [finishing, setFinishing] = useState(false);
 
-  const fail = useCallback(() => {
+  const fail = useCallback((detail?: string) => {
     if (doneRef.current) return;
     doneRef.current = true;
     abortRef.current = true;
+    if (detail) console.error("[loading]", detail);
     setHasFailed(true);
   }, []);
 
@@ -220,7 +221,7 @@ export default function LoadingPage() {
       }
 
       const timeoutId = setTimeout(() => {
-        fail();
+        fail("La génération a pris trop de temps (plus de 3 minutes)");
       }, TIMEOUT_MS);
 
       try {
@@ -239,7 +240,7 @@ export default function LoadingPage() {
         if (abortRef.current) return;
 
         if (!res.ok) {
-          fail();
+          fail(data.error || data.hint || "Impossible de lancer la génération");
           return;
         }
 
@@ -255,7 +256,15 @@ export default function LoadingPage() {
           if (abortRef.current) return;
 
           if (!statusRes.ok) {
-            fail();
+            fail(
+              statusData.error ||
+                "La génération a échoué côté serveur IA"
+            );
+            return;
+          }
+
+          if (statusData.state === "fail") {
+            fail(statusData.error || "La génération IA a échoué");
             return;
           }
 
@@ -271,8 +280,14 @@ export default function LoadingPage() {
           pollIndex += 1;
           await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
         }
-      } catch {
-        if (!abortRef.current) fail();
+      } catch (err) {
+        if (!abortRef.current) {
+          fail(
+            err instanceof Error
+              ? err.message
+              : "Erreur réseau pendant la génération"
+          );
+        }
       } finally {
         clearTimeout(timeoutId);
       }
