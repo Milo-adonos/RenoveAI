@@ -11,6 +11,7 @@ import { getStyleLabel } from "@/lib/styles";
 import { useDashboard } from "@/contexts/DashboardContext";
 import { isBypassAuthEnabled } from "@/lib/dev-bypass";
 import { addDevCreation, getDevCreations } from "@/lib/dev-creations";
+import { downloadGenerationImage } from "@/lib/download-image";
 
 function useAspectRatio(url: string): number {
   const [ratio, setRatio] = useState(4 / 3);
@@ -34,10 +35,30 @@ function CreationCard({
 }) {
   const aspectRatio = useAspectRatio(gen.original_image_url);
   const dateStr = new Date(gen.created_at).toLocaleDateString("fr-FR");
-  const styleSlug = (gen.style || "rendu").toLowerCase().replace(/\s+/g, "-");
+  const [downloading, setDownloading] = useState(false);
 
-  function downloadImage() {
-    window.location.assign(`/api/generations/download?id=${gen.id}`);
+  async function downloadImage() {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      await downloadGenerationImage(
+        gen.id,
+        gen.id.startsWith("optimistic-")
+          ? {
+              imageUrl: gen.generated_image_url,
+              style: gen.style,
+            }
+          : undefined
+      );
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Impossible de télécharger l'image. Réessayez.";
+      window.alert(message);
+    } finally {
+      setDownloading(false);
+    }
   }
 
   return (
@@ -64,9 +85,10 @@ function CreationCard({
         <button
           type="button"
           onClick={downloadImage}
-          className="w-full bg-accent hover:bg-accent-hover text-white font-semibold text-sm py-2.5 rounded-xl transition-colors"
+          disabled={downloading}
+          className="w-full bg-accent hover:bg-accent-hover disabled:opacity-60 text-white font-semibold text-sm py-2.5 rounded-xl transition-colors"
         >
-          ⬇ Télécharger
+          {downloading ? "Téléchargement…" : "⬇ Télécharger"}
         </button>
         <button
           type="button"
@@ -96,7 +118,8 @@ function PendingCard({ aspectRatio }: { aspectRatio: number }) {
 }
 
 export default function CreationsPage() {
-  const { pendingGeneration, refreshCreations } = useDashboard();
+  const { pendingGeneration, optimisticGeneration, refreshCreations } =
+    useDashboard();
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewOriginal, setViewOriginal] = useState<string | null>(null);
@@ -162,7 +185,8 @@ export default function CreationsPage() {
     return <div className="animate-pulse text-muted">Chargement...</div>;
   }
 
-  const hasContent = generations.length > 0 || pendingGeneration;
+  const hasContent =
+    generations.length > 0 || pendingGeneration || optimisticGeneration;
 
   return (
     <div>
@@ -182,6 +206,13 @@ export default function CreationsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {pendingGeneration && (
             <PendingCard aspectRatio={pendingGeneration.aspectRatio} />
+          )}
+          {optimisticGeneration && (
+            <CreationCard
+              key={optimisticGeneration.id}
+              gen={optimisticGeneration}
+              onViewOriginal={setViewOriginal}
+            />
           )}
           {generations.map((gen) => (
             <CreationCard

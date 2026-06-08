@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import { StyleCarousel } from "@/components/StyleCarousel";
 import { AI_CHOICE_STYLE } from "@/lib/styles";
+import { compressImageForGeneration } from "@/lib/compress-image";
 import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "@/contexts/DashboardContext";
 
@@ -33,24 +34,6 @@ export function CreationForm() {
     if (f) handleFile(f);
   }
 
-  async function getImageDimensions(
-    f: File
-  ): Promise<{ width: number; height: number }> {
-    return new Promise((resolve) => {
-      const url = URL.createObjectURL(f);
-      const img = new window.Image();
-      img.onload = () => {
-        resolve({ width: img.naturalWidth, height: img.naturalHeight });
-        URL.revokeObjectURL(url);
-      };
-      img.onerror = () => {
-        resolve({ width: 4, height: 3 });
-        URL.revokeObjectURL(url);
-      };
-      img.src = url;
-    });
-  }
-
   async function handleGenerate() {
     if (!file) {
       setError("Ajoute une photo d'abord");
@@ -65,14 +48,20 @@ export function CreationForm() {
     setError("");
 
     try {
-      const { width, height } = await getImageDimensions(file);
+      const compressed = await compressImageForGeneration(file);
+      const uploadFile = compressed.file;
+      const width = compressed.width;
+      const height = compressed.height;
+
       const supabase = createClient();
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `temp/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const path = `temp/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
 
       const { error: uploadError } = await supabase.storage
         .from("originals")
-        .upload(path, file, { upsert: true });
+        .upload(path, uploadFile, {
+          upsert: true,
+          contentType: "image/jpeg",
+        });
 
       let originalUrl: string;
       let originalPath: string | undefined = path;
@@ -81,7 +70,7 @@ export function CreationForm() {
         const reader = new FileReader();
         originalUrl = await new Promise<string>((resolve) => {
           reader.onload = () => resolve(reader.result as string);
-          reader.readAsDataURL(file);
+          reader.readAsDataURL(uploadFile);
         });
         originalPath = undefined;
       } else {

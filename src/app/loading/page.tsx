@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  GENERATION_POLL_INTERVAL_MS,
+  GENERATION_SAFETY_TIMEOUT_MS,
+  GENERATION_TYPICAL_MS,
+} from "@/lib/generation-config";
 import { getGeneration, saveGeneration } from "@/lib/session";
 
 const STATUS_MESSAGES = [
@@ -106,10 +111,10 @@ const tips = [
   },
 ];
 
-const POLL_INTERVAL_MS = 1500;
+const POLL_INTERVAL_MS = GENERATION_POLL_INTERVAL_MS;
 const TICK_MS = 100;
-const TIMEOUT_MS = 180_000;
-const PATIENCE_AFTER_MS = 20_000;
+const SAFETY_TIMEOUT_MS = GENERATION_SAFETY_TIMEOUT_MS;
+const PATIENCE_AFTER_MS = GENERATION_TYPICAL_MS;
 const MESSAGE_INTERVAL_MS = 6_000;
 const TIP_INTERVAL_MS = 6_000;
 const TIP_FADE_MS = 500;
@@ -120,21 +125,22 @@ const FRIENDLY_ERROR =
 
 function getProgressFromElapsed(elapsedMs: number): number {
   const t = elapsedMs / 1000;
+  const typicalSec = GENERATION_TYPICAL_MS / 1000;
 
-  if (t <= 10) {
-    return (t / 10) * 60;
+  if (t <= typicalSec * 0.4) {
+    return (t / (typicalSec * 0.4)) * 50;
   }
 
-  if (t <= 25) {
-    return 60 + ((t - 10) / 15) * 25;
+  if (t <= typicalSec) {
+    return 50 + ((t - typicalSec * 0.4) / (typicalSec * 0.6)) * 35;
   }
 
   const pulseMs = 2000;
-  const phase = ((elapsedMs - 25_000) % (pulseMs * 2)) / pulseMs;
+  const phase = ((elapsedMs - GENERATION_TYPICAL_MS) % (pulseMs * 2)) / pulseMs;
   if (phase <= 1) {
-    return 85 + phase * 3;
+    return 86 + phase * 5;
   }
-  return 88 - (phase - 1) * 3;
+  return 91 - (phase - 1) * 5;
 }
 
 function getMessageIndex(elapsedMs: number): number {
@@ -221,8 +227,8 @@ export default function LoadingPage() {
       }
 
       const timeoutId = setTimeout(() => {
-        fail("La génération a pris trop de temps (plus de 3 minutes)");
-      }, TIMEOUT_MS);
+        fail("Filet de sécurité — génération bloquée trop longtemps");
+      }, SAFETY_TIMEOUT_MS);
 
       try {
         const res = await fetch("/api/generate", {

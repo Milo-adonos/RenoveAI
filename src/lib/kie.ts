@@ -1,4 +1,8 @@
 import type { SpaceType } from "@/lib/styles";
+import {
+  GENERATION_POLL_INTERVAL_MS,
+  GENERATION_SAFETY_TIMEOUT_MS,
+} from "@/lib/generation-config";
 
 const KIE_API_BASE = "https://api.kie.ai";
 const KIE_RESOLUTION = process.env.KIE_RESOLUTION === "2K" ? "2K" : "1K";
@@ -173,8 +177,10 @@ export async function createGenerationTask(
 
 export async function pollTaskResult(
   taskId: string,
-  maxAttempts = 60,
-  intervalMs = 3000
+  maxAttempts = Math.ceil(
+    GENERATION_SAFETY_TIMEOUT_MS / GENERATION_POLL_INTERVAL_MS
+  ),
+  intervalMs = GENERATION_POLL_INTERVAL_MS
 ): Promise<string> {
   for (let i = 0; i < maxAttempts; i++) {
     const response = await fetch(

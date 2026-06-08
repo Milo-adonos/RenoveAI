@@ -14,7 +14,7 @@ import { isBypassAuthEnabled, getDevBypassUser } from "@/lib/dev-bypass";
 import { addDevCreation } from "@/lib/dev-creations";
 import { getNextMonday, WEEKLY_LIMIT } from "@/lib/weekly-generations";
 
-const POLL_INTERVAL_MS = 2500;
+import { pollGenerationUntilDone } from "@/lib/poll-generation";
 const DEV_WEEKLY_KEY = "renove_dev_weekly_used";
 
 export type PendingGeneration = {
@@ -34,6 +34,7 @@ type GenerationInput = {
 
 type DashboardContextValue = {
   pendingGeneration: PendingGeneration | null;
+  optimisticGeneration: Generation | null;
   successToast: boolean;
   dismissToast: () => void;
   refreshCreations: number;
@@ -77,6 +78,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [pendingGeneration, setPendingGeneration] =
     useState<PendingGeneration | null>(null);
+  const [optimisticGeneration, setOptimisticGeneration] =
+    useState<Generation | null>(null);
   const [successToast, setSuccessToast] = useState(false);
   const [refreshCreations, setRefreshCreations] = useState(0);
 
@@ -108,6 +111,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         router.push("/dashboard/creations");
 
         try {
+          const generationStartedAt = Date.now();
           const res = await fetch("/api/generate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -121,25 +125,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           if (!res.ok) throw new Error(data.error || "Generation failed");
 
           const { taskId } = data as { taskId: string };
-          let pollIndex = 0;
-          let generatedUrl: string | null = null;
-
-          while (!generatedUrl) {
-            await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-            const statusRes = await fetch(
-              `/api/generate/status?taskId=${taskId}&poll=${pollIndex}`
-            );
-            const statusData = await statusRes.json();
-            pollIndex += 1;
-
-            if (!statusRes.ok) {
-              throw new Error(statusData.error || "Generation failed");
-            }
-
-            if (statusData.state === "success" && statusData.generatedUrl) {
-              generatedUrl = statusData.generatedUrl;
-            }
-          }
+          const generatedUrl = await pollGenerationUntilDone(
+            taskId,
+            generationStartedAt
+          );
 
           addDevCreation({
             original_image_url: input.originalUrl,
@@ -183,6 +172,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       router.push("/dashboard/creations");
 
       try {
+        const generationStartedAt = Date.now();
         const res = await fetch("/api/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -196,27 +186,24 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         if (!res.ok) throw new Error(data.error || "Generation failed");
 
         const { taskId } = data as { taskId: string };
-        let pollIndex = 0;
-        let generatedUrl: string | null = null;
+        const generatedUrl = await pollGenerationUntilDone(
+          taskId,
+          generationStartedAt
+        );
 
-        while (!generatedUrl) {
-          await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-          const statusRes = await fetch(
-            `/api/generate/status?taskId=${taskId}&poll=${pollIndex}`
-          );
-          const statusData = await statusRes.json();
-          pollIndex += 1;
+        setPendingGeneration(null);
+        setOptimisticGeneration({
+          id: `optimistic-${Date.now()}`,
+          user_id: "pending",
+          original_image_url: input.originalUrl,
+          generated_image_url: generatedUrl,
+          style: input.style || null,
+          custom_prompt: input.customPrompt || null,
+          created_at: new Date().toISOString(),
+        });
+        setSuccessToast(true);
 
-          if (!statusRes.ok) {
-            throw new Error(statusData.error || "Generation failed");
-          }
-
-          if (statusData.state === "success" && statusData.generatedUrl) {
-            generatedUrl = statusData.generatedUrl;
-          }
-        }
-
-        const saveRes = await fetch("/api/generations/save", {
+        void fetch("/api/generations/save", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -226,16 +213,22 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
             customPrompt: input.customPrompt,
             originalPath: input.originalPath,
           }),
-        });
+        })
+          .then(async (saveRes) => {
+            if (!saveRes.ok) {
+              console.error(
+                "[dashboard] Sauvegarde en arrière-plan échouée:",
+                await saveRes.text()
+              );
+              return;
+            }
+            setOptimisticGeneration(null);
+            setRefreshCreations((n) => n + 1);
+          })
+          .catch((err) => {
+            console.error("[dashboard] Sauvegarde en arrière-plan:", err);
+          });
 
-        if (!saveRes.ok) {
-          const saveData = await saveRes.json();
-          throw new Error(saveData.error || "Failed to save generation");
-        }
-
-        setPendingGeneration(null);
-        setRefreshCreations((n) => n + 1);
-        setSuccessToast(true);
         return null;
       } catch (err) {
         setPendingGeneration(null);
@@ -249,6 +242,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     <DashboardContext.Provider
       value={{
         pendingGeneration,
+        optimisticGeneration,
         successToast,
         dismissToast,
         refreshCreations,
