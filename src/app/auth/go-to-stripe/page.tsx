@@ -1,15 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 
 export default function GoToStripe() {
-  const router = useRouter();
 
   useEffect(() => {
     const plan = localStorage.getItem("selectedPlan") || "monthly";
-    router.push(`/api/stripe/checkout?plan=${plan}`);
-  }, [router]);
+    window.location.href = `/api/stripe/checkout?plan=${plan}`;
+  }, []);
 
   return (
     <main className="min-h-screen flex items-center justify-center">

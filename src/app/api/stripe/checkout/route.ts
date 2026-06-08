@@ -22,11 +22,27 @@ export async function GET(request: NextRequest) {
 
     const serviceClient = await createServiceClient();
 
-    const { data: profile } = await serviceClient
+    let { data: profile } = await serviceClient
       .from("profiles")
       .select("stripe_customer_id")
       .eq("id", user.id)
       .single();
+
+    if (!profile) {
+      await serviceClient.from("profiles").upsert({
+        id: user.id,
+        email: user.email,
+        full_name:
+          user.user_metadata?.full_name || user.user_metadata?.name || null,
+        avatar_url: user.user_metadata?.avatar_url || null,
+      });
+      const { data } = await serviceClient
+        .from("profiles")
+        .select("stripe_customer_id")
+        .eq("id", user.id)
+        .single();
+      profile = data;
+    }
 
     let customerId = profile?.stripe_customer_id;
 
@@ -43,6 +59,8 @@ export async function GET(request: NextRequest) {
         .eq("id", user.id);
     }
 
+    const baseUrl = request.nextUrl.origin;
+
     const stripeSession = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
@@ -52,8 +70,8 @@ export async function GET(request: NextRequest) {
         metadata: { plan, supabase_user_id: user.id },
       },
       metadata: { plan, supabase_user_id: user.id },
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing`,
+      success_url: `${baseUrl}/api/stripe/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/pricing`,
       allow_promotion_codes: true,
       locale: "fr",
     });

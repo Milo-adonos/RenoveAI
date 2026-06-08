@@ -6,7 +6,11 @@ export async function activateSubscriptionFromSession(
   session: Stripe.Checkout.Session
 ): Promise<boolean> {
   const userId = session.metadata?.supabase_user_id;
-  if (!userId || session.payment_status !== "paid") {
+  const isPaid =
+    session.payment_status === "paid" ||
+    session.payment_status === "no_payment_required";
+
+  if (!userId || !isPaid) {
     return false;
   }
 
@@ -33,7 +37,9 @@ export async function activateSubscriptionFromSession(
     full_name?: string;
   } = {
     subscription_status:
-      subscription.status === "active" ? "active" : "inactive",
+      subscription.status === "active" || subscription.status === "trialing"
+        ? "active"
+        : "inactive",
     subscription_plan: plan,
     subscription_end_date: new Date(
       subscription.current_period_end * 1000
