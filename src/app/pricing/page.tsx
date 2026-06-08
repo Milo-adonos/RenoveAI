@@ -10,7 +10,6 @@ import {
   isPricingTimerExpired,
 } from "@/lib/pricing-timer";
 import { createClient } from "@/lib/supabase/client";
-import { isBypassAuthEnabled, saveDevBypassUser } from "@/lib/dev-bypass";
 
 const monthlyFeatures = [
   "Générations illimitées",
@@ -67,7 +66,6 @@ export default function PricingPage() {
   const [loadingPlan, setLoadingPlan] = useState<SubscriptionPlan | null>(null);
   const [timerEnd, setTimerEnd] = useState<number | null>(null);
   const [remainingMs, setRemainingMs] = useState(0);
-
   useEffect(() => {
     const end = getPricingTimerEnd();
     setTimerEnd(end);
@@ -89,12 +87,6 @@ export default function PricingPage() {
   async function handleCheckout(plan: "monthly" | "weekly") {
     setLoadingPlan(plan);
     savePlan(plan);
-
-    if (isBypassAuthEnabled()) {
-      saveDevBypassUser(plan);
-      router.push("/dashboard");
-      return;
-    }
 
     const supabase = createClient();
     const {
@@ -124,8 +116,25 @@ export default function PricingPage() {
         {/* 2. Ce que tu évites */}
         <section className="mb-4">
           <h2 className="font-hero text-lg sm:text-xl font-bold text-center mb-6 text-foreground leading-snug px-1">
-            Ce que tu évites avec{" "}
-            <span className="whitespace-nowrap">Renove AI</span>
+            Ce que tu{" "}
+            <span className="text-accent relative inline-block">
+              évites
+              <svg
+                className="absolute -bottom-1 left-0 w-full h-3 text-accent"
+                viewBox="0 0 120 12"
+                fill="none"
+                preserveAspectRatio="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M2 8C20 2 40 10 60 6C80 2 100 10 118 4"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </span>{" "}
+            avec <span className="whitespace-nowrap">Renove AI</span>
           </h2>
           <ul className="space-y-3">
             {avoids.map((item) => (
@@ -148,9 +157,15 @@ export default function PricingPage() {
         {/* 4. Plan mensuel */}
         <div
           className="card border-2 border-accent mb-4"
-          style={{ boxShadow: "0 8px 32px rgba(160,82,45,0.2)" }}
+          style={{ boxShadow: "0 8px 32px rgba(160, 82, 45, 0.2)" }}
         >
-          <span className="inline-block bg-accent text-white text-xs font-semibold px-3 py-1 rounded-full">
+          <span
+            className="inline-block text-white text-xs font-semibold px-3 py-1 rounded-full"
+            style={{
+              background: "#A0522D",
+              boxShadow: "0 2px 8px rgba(160, 82, 45, 0.3)",
+            }}
+          >
             ⭐ LE PLUS POPULAIRE
           </span>
           <p className="text-muted text-sm italic mt-4">
@@ -180,8 +195,7 @@ export default function PricingPage() {
             type="button"
             onClick={() => handleCheckout("monthly")}
             disabled={loadingPlan !== null}
-            className="w-full bg-accent hover:bg-accent-hover text-white font-bold text-base py-4 px-6 rounded-2xl transition-colors mt-6 disabled:opacity-50"
-            style={{ boxShadow: "0 8px 24px rgba(160,82,45,0.35)" }}
+            className="pricing-glow-cta w-full bg-accent hover:bg-accent-hover text-white font-bold text-base py-4 px-6 rounded-2xl transition-colors mt-6 disabled:opacity-50"
           >
             {loadingPlan === "monthly"
               ? "Chargement..."

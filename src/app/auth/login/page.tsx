@@ -1,13 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Logo } from "@/components/Logo";
+import { getPlan } from "@/lib/session";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,15 +28,33 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/dashboard");
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("subscription_status")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.subscription_status === "active") {
+        window.location.href = "/dashboard";
+        return;
+      }
+    }
+
+    window.location.href = `/api/stripe/checkout?plan=${getPlan()}`;
   }
 
   async function handleGoogle() {
     const supabase = createClient();
+    const plan = getPlan();
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback?plan=${plan}`,
       },
     });
   }
@@ -102,13 +118,6 @@ export default function LoginPage() {
             {loading ? "Connexion..." : "Se connecter"}
           </button>
         </form>
-
-        <p className="text-center text-sm text-muted mt-6">
-          Pas encore de compte ?{" "}
-          <Link href="/auth/signup" className="text-accent font-medium">
-            Créer un compte
-          </Link>
-        </p>
       </div>
     </main>
   );

@@ -10,7 +10,7 @@ export interface GenerationSession {
 }
 
 const SESSION_KEY = "renove_generation";
-const PLAN_KEY = "renove_plan";
+const PLAN_KEY = "selectedPlan";
 const PREVIEW_SEEN_KEY = "renove_preview_seen";
 
 export function saveGeneration(data: Partial<GenerationSession>) {
@@ -63,6 +63,17 @@ export function getPlanLabel(plan: SubscriptionPlan): string {
       return "Hebdomadaire";
     case "monthly":
       return "Mensuel";
+    case "annual":
+      return "Annuel";
+  }
+}
+
+export function getPlanPrice(plan: SubscriptionPlan): string {
+  switch (plan) {
+    case "weekly":
+      return "4,99€/semaine";
+    case "monthly":
+      return "9,99€/mois";
     case "annual":
       return "Annuel";
   }

@@ -66,6 +66,7 @@ export async function GET(request: NextRequest) {
       customer: customerId,
       mode: "subscription",
       payment_method_types: ["card"],
+      billing_address_collection: "required",
       line_items: [
         {
           price: getPriceId(plan),
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
         },
       ],
       subscription_data: {
-        metadata: { plan },
+        metadata: { plan, supabase_user_id: user.id },
       },
       metadata: { plan, supabase_user_id: user.id },
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,

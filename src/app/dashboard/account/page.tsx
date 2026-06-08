@@ -20,6 +20,10 @@ export default function AccountPage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [limit, setLimit] = useState<LimitInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editingName, setEditingName] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [savingName, setSavingName] = useState(false);
+  const [nameError, setNameError] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -96,6 +100,53 @@ export default function AccountPage() {
   const weeklyUsed = limit?.weeklyUsed ?? 0;
   const progressPct = (weeklyUsed / WEEKLY_LIMIT) * 100;
 
+  async function saveName() {
+    if (!profile) return;
+
+    const trimmed = editName.trim();
+    if (!trimmed) {
+      setNameError("Le nom ne peut pas être vide");
+      return;
+    }
+
+    setSavingName(true);
+    setNameError("");
+
+    if (isBypassAuthEnabled()) {
+      setProfile((prev) =>
+        prev ? { ...prev, full_name: trimmed } : prev
+      );
+      setEditingName(false);
+      setSavingName(false);
+      return;
+    }
+
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("profiles")
+      .update({ full_name: trimmed })
+      .eq("id", profile.id);
+
+    if (error) {
+      setNameError("Erreur lors de la sauvegarde");
+      setSavingName(false);
+      return;
+    }
+
+    setProfile((prev) =>
+      prev ? { ...prev, full_name: trimmed } : prev
+    );
+    setEditingName(false);
+    setSavingName(false);
+  }
+
+  function cancelEditName() {
+    if (!profile) return;
+    setEditName(profile.full_name || "");
+    setEditingName(false);
+    setNameError("");
+  }
+
   return (
     <div className="max-w-lg">
       <h1 className="font-hero text-2xl font-bold mb-8">Mon compte</h1>
@@ -107,11 +158,52 @@ export default function AccountPage() {
           >
             {initial}
           </div>
-          <div>
-            <p className="font-hero text-xl font-bold text-foreground">
-              {profile.full_name || firstName}
-            </p>
-            <p className="text-sm text-muted">{profile.email}</p>
+          <div className="flex-1 min-w-0">
+            {editingName ? (
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full font-hero text-xl font-bold text-foreground bg-background border border-muted/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  autoFocus
+                />
+                {nameError && (
+                  <p className="text-red-600 text-xs">{nameError}</p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={saveName}
+                    disabled={savingName}
+                    className="bg-accent hover:bg-accent-hover text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
+                  >
+                    {savingName ? "..." : "Sauvegarder"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelEditName}
+                    disabled={savingName}
+                    className="text-sm text-muted border border-muted/30 px-4 py-2 rounded-xl hover:bg-background transition-colors"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditName(profile.full_name || firstName);
+                  setEditingName(true);
+                  setNameError("");
+                }}
+                className="font-hero text-xl font-bold text-foreground text-left hover:text-accent transition-colors"
+              >
+                {profile.full_name || firstName}
+              </button>
+            )}
+            <p className="text-sm text-muted mt-1">{profile.email}</p>
           </div>
         </div>
       </div>

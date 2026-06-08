@@ -27,6 +27,20 @@ export async function POST(request: NextRequest) {
   const supabase = await createServiceClient();
 
   switch (event.type) {
+    case "checkout.session.completed": {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const userId = session.metadata?.supabase_user_id;
+      const name = session.customer_details?.name;
+
+      if (userId && name) {
+        await supabase
+          .from("profiles")
+          .update({ full_name: name })
+          .eq("id", userId);
+      }
+      break;
+    }
+
     case "customer.subscription.created":
     case "customer.subscription.updated": {
       const subscription = event.data.object as Stripe.Subscription;

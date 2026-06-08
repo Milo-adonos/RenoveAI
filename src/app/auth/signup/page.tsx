@@ -2,13 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Logo } from "@/components/Logo";
-import { getPlan } from "@/lib/session";
+import { getPlan, getPlanLabel, getPlanPrice } from "@/lib/session";
 import { createClient } from "@/lib/supabase/client";
 
 export default function SignupPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,7 +33,7 @@ export default function SignupPage() {
       return;
     }
 
-    router.push(`/api/stripe/checkout?plan=${plan}`);
+    window.location.href = `/api/stripe/checkout?plan=${plan}`;
   }
 
   async function handleGoogle() {
@@ -56,8 +54,8 @@ export default function SignupPage() {
           <Logo />
         </div>
 
-        <span className="inline-block bg-accent/10 text-accent text-sm px-3 py-1 rounded-full mb-4">
-          🛡️ Satisfait ou remboursé 7 jours
+        <span className="inline-block bg-accent/10 text-accent text-sm font-semibold px-3 py-1 rounded-full mb-4">
+          Plan {getPlanLabel(plan)} — {getPlanPrice(plan)}
         </span>
 
         <h1 className="font-display text-3xl font-bold mb-2">Crée ton compte</h1>

@@ -148,23 +148,33 @@ export function getPromptForStyle(
 
 export const beforeAfterExamples = [
   {
-    before: "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=600&h=400&fit=crop",
-    after: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=600&h=400&fit=crop",
-    style: "Moderne",
-  },
-  {
-    before: "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=600&h=400&fit=crop",
-    after: "https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?w=600&h=400&fit=crop",
+    room: "Salon",
+    before: "/before-after/salon-avant.png",
+    after: "/before-after/salon-apres.png",
     style: "Scandinave",
   },
   {
-    before: "https://images.unsplash.com/photo-1556912173-3bb406ef7e77?w=600&h=400&fit=crop",
-    after: "https://images.unsplash.com/photo-1615529328331-f8917597711f?w=600&h=400&fit=crop",
+    room: "Bureau",
+    before: "/before-after/bureau-avant.png",
+    after: "/before-after/bureau-apres.png",
+    style: "Moderne",
+  },
+  {
+    room: "Salle de bain",
+    before: "/before-after/sdb-avant.png",
+    after: "/before-after/sdb-apres.png",
+    style: "Luxe",
+  },
+  {
+    room: "Chambre",
+    before: "/before-after/chambre-avant.png",
+    after: "/before-after/chambre-apres.png",
     style: "Cosy",
   },
   {
-    before: "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600&h=400&fit=crop",
-    after: "https://images.unsplash.com/photo-1618220179428-22790b461013?w=600&h=400&fit=crop",
-    style: "Industriel",
+    room: "Cuisine",
+    before: "/before-after/cuisine-avant.png",
+    after: "/before-after/cuisine-apres.png",
+    style: "Moderne",
   },
 ];

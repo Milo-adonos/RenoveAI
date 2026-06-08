@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getGeneration, clearGeneration } from "@/lib/session";
 import type { Generation } from "@/types/database";
@@ -200,20 +201,29 @@ export default function CreationsPage() {
 
       {viewOriginal && (
         <div
-          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.75)" }}
           onClick={() => setViewOriginal(null)}
           role="presentation"
         >
+          <button
+            type="button"
+            onClick={() => setViewOriginal(null)}
+            className="absolute top-4 right-4 z-10 text-white p-2 rounded-full hover:bg-white/10 transition-colors"
+            aria-label="Fermer"
+          >
+            <X size={28} strokeWidth={2} />
+          </button>
           <div
-            className="relative max-w-2xl w-full max-h-[85vh]"
+            className="relative w-full max-w-4xl flex items-center justify-center"
             onClick={(e) => e.stopPropagation()}
           >
             <Image
               src={viewOriginal}
               alt="Original"
-              width={1200}
-              height={900}
-              className="w-full h-auto max-h-[85vh] object-contain rounded-2xl"
+              width={1600}
+              height={1200}
+              className="w-full h-auto max-h-[90vh] object-contain"
               unoptimized
             />
           </div>

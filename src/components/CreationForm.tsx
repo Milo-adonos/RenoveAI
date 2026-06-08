@@ -109,8 +109,13 @@ export function CreationForm() {
   }
 
   return (
-    <div>
-      <h1 className="font-hero text-2xl font-bold mb-6">Nouvelle création</h1>
+    <div className="w-full max-w-lg mx-auto min-w-0 overflow-x-hidden">
+      <h1 className="font-display text-3xl font-bold text-center mb-2">
+        Upload ta photo
+      </h1>
+      <p className="text-muted text-center mb-8">
+        Plus elle est nette, plus le résultat sera bluffant
+      </p>
 
       {!preview ? (
         <div
@@ -119,7 +124,15 @@ export function CreationForm() {
           onClick={() => fileRef.current?.click()}
           className="card border-2 border-dashed border-muted/40 cursor-pointer hover:border-accent/50 transition-colors py-16 text-center"
         >
-          <p className="font-medium">Glisse ta photo ici ou clique pour choisir</p>
+          <span className="text-4xl mb-4 block md:hidden" aria-hidden="true">
+            📷
+          </span>
+          <p className="font-medium">
+            <span className="md:hidden">Appuie pour choisir une photo</span>
+            <span className="hidden md:inline">
+              Glisse ta photo ici ou clique pour choisir
+            </span>
+          </p>
           <p className="text-xs text-muted mt-2">JPG, PNG, WEBP — Max 10 Mo</p>
           <input
             ref={fileRef}
@@ -145,8 +158,8 @@ export function CreationForm() {
         </div>
       )}
 
-      <div className="mt-8">
-        <h2 className="font-display text-lg font-bold mb-4">Choisis un style</h2>
+      <div className="mt-10">
+        <h2 className="font-display text-xl font-bold mb-4">Choisis un style</h2>
         <StyleCarousel
           selected={selectedStyle}
           onSelect={(s) => {
@@ -158,7 +171,7 @@ export function CreationForm() {
 
       {selectedStyle !== AI_CHOICE_STYLE && (
         <div className="mt-8">
-          <h2 className="font-display text-lg font-bold mb-4">
+          <h2 className="font-display text-xl font-bold mb-4">
             Ou décris ce que tu veux
           </h2>
           <textarea
@@ -168,8 +181,12 @@ export function CreationForm() {
               if (e.target.value) setSelectedStyle(null);
             }}
             placeholder="Ex : Ajoute un bureau blanc avec une lampe, change la couleur des murs en vert sauge..."
-            className="w-full card border border-muted/20 p-4 min-h-[100px] resize-none focus:outline-none focus:ring-2 focus:ring-accent/30"
+            className="w-full card border border-muted/20 p-4 min-h-[100px] resize-none focus:outline-none focus:ring-2 focus:ring-accent/30 text-base"
+            style={{ fontSize: 16 }}
           />
+          <p className="text-xs text-muted mt-2">
+            💡 Sois précis : couleur, style, mobilier pour un meilleur résultat
+          </p>
         </div>
       )}
 
