@@ -3,7 +3,7 @@
 ## URL en ligne
 
 - **Production Vercel :** https://renove-ai.vercel.app
-- **Domaine cible :** https://renoveai.com (à connecter)
+- **Domaine cible :** https://www.renoveai.com (canonique — `renoveai.com` redirige en 308 vers www)
 
 Chaque push sur `main` redéploie automatiquement via GitHub.
 
@@ -16,8 +16,9 @@ Chaque push sur `main` redéploie automatiquement via GitHub.
 3. Configure les DNS chez ton registrar (records indiqués par Vercel)
 4. Une fois actif, mets à jour sur Vercel :
    ```
-   NEXT_PUBLIC_APP_URL=https://renoveai.com
+   NEXT_PUBLIC_APP_URL=https://www.renoveai.com
    ```
+   ⚠️ Utilise **www** partout. `renoveai.com` sans www renvoie une 308 — Stripe ne suit pas les redirections.
 5. Redéploie (ou push un commit)
 
 ---
@@ -33,9 +34,10 @@ Dashboard Supabase → **Authentication** → **URL Configuration** :
 
 | Champ | Valeur |
 |-------|--------|
-| Site URL | `https://renoveai.com` |
-| Redirect URLs | `https://renoveai.com/**` |
-| | `https://renove-ai.vercel.app/**` |
+| Site URL | `https://www.renoveai.com` |
+| Redirect URLs | `https://www.renoveai.com/auth/callback` |
+| | `http://localhost:3000/auth/callback` |
+| | `https://renove-ai.vercel.app/auth/callback` |
 
 ### Google OAuth (optionnel)
 Callback Google : `https://zokolrnfpajsmawmlpry.supabase.co/auth/v1/callback`
@@ -45,9 +47,13 @@ Callback Google : `https://zokolrnfpajsmawmlpry.supabase.co/auth/v1/callback`
 ## 3. Stripe Webhook (obligatoire pour les abonnements)
 
 1. [dashboard.stripe.com](https://dashboard.stripe.com) → **Developers** → **Webhooks**
-2. **Add endpoint** : `https://renoveai.com/api/stripe/webhook`
-   (ou `https://renove-ai.vercel.app/api/stripe/webhook` en attendant le domaine)
+2. **Endpoint URL** (avec **www**, sinon erreur 308) :
+   ```
+   https://www.renoveai.com/api/stripe/webhook
+   ```
+   ❌ Ne pas utiliser `https://renoveai.com/...` — Stripe ne suit pas les redirections 308.
 3. Événements à écouter :
+   - `checkout.session.completed`
    - `customer.subscription.created`
    - `customer.subscription.updated`
    - `customer.subscription.deleted`
@@ -75,7 +81,7 @@ Déjà configurées en production :
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | ✅ |
 | `STRIPE_PRICE_WEEKLY` | ✅ |
 | `STRIPE_PRICE_MONTHLY` | ✅ |
-| `NEXT_PUBLIC_APP_URL` | ✅ → `https://renoveai.com` |
+| `NEXT_PUBLIC_APP_URL` | ✅ → `https://www.renoveai.com` |
 | `STRIPE_WEBHOOK_SECRET` | ⚠️ À mettre à jour après création du webhook |
 
 Gérer sur : Vercel → renove-ai → **Settings** → **Environment Variables**

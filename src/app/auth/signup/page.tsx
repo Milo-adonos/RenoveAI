@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
-import { getPlan, getPlanLabel, getPlanPrice } from "@/lib/session";
+import {
+  getPlan,
+  getPlanLabel,
+  getPlanPrice,
+  type SubscriptionPlan,
+} from "@/lib/session";
 import { createClient } from "@/lib/supabase/client";
 
 export default function SignupPage() {
@@ -11,9 +16,13 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const plan = getPlan();
+  const [plan, setPlan] = useState<SubscriptionPlan>("monthly");
 
-  async function handleSignup(e: React.FormEvent) {
+  useEffect(() => {
+    setPlan(getPlan());
+  }, []);
+
+  async function handleEmailSignup(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -22,9 +31,6 @@ export default function SignupPage() {
     const { error: signUpError } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?plan=${plan}`,
-      },
     });
 
     if (signUpError) {
@@ -33,16 +39,16 @@ export default function SignupPage() {
       return;
     }
 
-    window.location.href = `/api/stripe/checkout?plan=${plan}`;
+    const selectedPlan = localStorage.getItem("selectedPlan") || "monthly";
+    window.location.href = `/api/stripe/checkout?plan=${selectedPlan}`;
   }
 
-  async function handleGoogle() {
+  async function handleGoogleSignup() {
     const supabase = createClient();
-    const plan = getPlan();
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?plan=${plan}`,
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
   }
@@ -64,7 +70,8 @@ export default function SignupPage() {
         </p>
 
         <button
-          onClick={handleGoogle}
+          type="button"
+          onClick={handleGoogleSignup}
           className="w-full bg-card border border-muted/30 rounded-2xl py-4 px-6 flex items-center justify-center gap-3 font-medium shadow-soft hover:shadow-card transition-shadow"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -94,7 +101,7 @@ export default function SignupPage() {
           <div className="flex-1 h-px bg-muted/30" />
         </div>
 
-        <form onSubmit={handleSignup} className="space-y-4">
+        <form onSubmit={handleEmailSignup} className="space-y-4">
           <input
             type="email"
             placeholder="ton@email.fr"
@@ -122,7 +129,7 @@ export default function SignupPage() {
             disabled={loading}
             className="btn-primary disabled:opacity-50"
           >
-            {loading ? "Création..." : "Créer mon compte → Paiement"}
+            {loading ? "Création..." : "Créer mon compte"}
           </button>
         </form>
 

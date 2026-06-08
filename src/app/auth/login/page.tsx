@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
-import { getPlan } from "@/lib/session";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -45,16 +44,15 @@ export default function LoginPage() {
       }
     }
 
-    window.location.href = `/api/stripe/checkout?plan=${getPlan()}`;
+    window.location.href = "/pricing";
   }
 
-  async function handleGoogle() {
+  async function handleGoogleLogin() {
     const supabase = createClient();
-    const plan = getPlan();
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?plan=${plan}`,
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
   }
@@ -70,7 +68,7 @@ export default function LoginPage() {
         <p className="text-muted mb-8">Content de te revoir !</p>
 
         <button
-          onClick={handleGoogle}
+          onClick={handleGoogleLogin}
           className="w-full bg-card border border-muted/30 rounded-2xl py-4 px-6 flex items-center justify-center gap-3 font-medium shadow-soft hover:shadow-card transition-shadow"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { clearPlan } from "@/lib/session";
 
 export function WelcomeToast() {
   const [show, setShow] = useState(false);
@@ -8,6 +9,7 @@ export function WelcomeToast() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("success") === "true") {
+      clearPlan();
       setShow(true);
       const timer = setTimeout(() => setShow(false), 5000);
 

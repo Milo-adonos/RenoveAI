@@ -3,14 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
-import { savePlan, type SubscriptionPlan } from "@/lib/session";
+import type { SubscriptionPlan } from "@/lib/session";
 import {
   formatPricingTimer,
   getPricingTimerEnd,
   isPricingTimerExpired,
 } from "@/lib/pricing-timer";
-import { createClient } from "@/lib/supabase/client";
-
 const monthlyFeatures = [
   "Générations illimitées",
   "Téléchargement HD",
@@ -84,20 +82,10 @@ export default function PricingPage() {
 
   const expired = isPricingTimerExpired(remainingMs);
 
-  async function handleCheckout(plan: "monthly" | "weekly") {
+  function handlePlanSelect(plan: "monthly" | "weekly") {
     setLoadingPlan(plan);
-    savePlan(plan);
-
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (user) {
-      window.location.href = `/api/stripe/checkout?plan=${plan}`;
-    } else {
-      router.push("/auth/signup");
-    }
+    localStorage.setItem("selectedPlan", plan);
+    router.push("/auth/signup");
   }
 
   return (
@@ -193,7 +181,7 @@ export default function PricingPage() {
           <FeatureList items={monthlyFeatures} />
           <button
             type="button"
-            onClick={() => handleCheckout("monthly")}
+            onClick={() => handlePlanSelect("monthly")}
             disabled={loadingPlan !== null}
             className="pricing-glow-cta w-full bg-accent hover:bg-accent-hover text-white font-bold text-base py-4 px-6 rounded-2xl transition-colors mt-6 disabled:opacity-50"
           >
@@ -218,7 +206,7 @@ export default function PricingPage() {
           </p>
           <button
             type="button"
-            onClick={() => handleCheckout("weekly")}
+            onClick={() => handlePlanSelect("weekly")}
             disabled={loadingPlan !== null}
             className="w-full border-2 border-accent text-accent hover:bg-accent hover:text-white font-bold text-base py-4 px-6 rounded-2xl transition-colors mt-6 disabled:opacity-50"
           >

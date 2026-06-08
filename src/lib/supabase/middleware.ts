@@ -12,7 +12,13 @@ export async function updateSession(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+        setAll(
+          cookiesToSet: {
+            name: string;
+            value: string;
+            options: CookieOptions;
+          }[]
+        ) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
@@ -35,9 +41,7 @@ export async function updateSession(request: NextRequest) {
     }
 
     if (!user) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/auth/login";
-      return NextResponse.redirect(url);
+      return NextResponse.redirect(new URL("/auth/login", request.url));
     }
 
     const { data: profile } = await supabase
@@ -47,9 +51,7 @@ export async function updateSession(request: NextRequest) {
       .single();
 
     if (!profile || profile.subscription_status !== "active") {
-      const url = request.nextUrl.clone();
-      url.pathname = "/pricing";
-      return NextResponse.redirect(url);
+      return NextResponse.redirect(new URL("/pricing", request.url));
     }
   }
 

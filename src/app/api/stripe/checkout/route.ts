@@ -1,51 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
-
-export const dynamic = "force-dynamic";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { stripe, getPriceId } from "@/lib/stripe";
 
-export async function GET(request: NextRequest) {
-  try {
-    const plan = (request.nextUrl.searchParams.get("plan") || "monthly") as
-      | "weekly"
-      | "monthly"
-      | "annual";
+export const dynamic = "force-dynamic";
 
+export async function GET(request: NextRequest) {
+  const plan = (request.nextUrl.searchParams.get("plan") || "monthly") as
+    | "weekly"
+    | "monthly";
+
+  try {
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.redirect(
-        new URL("/auth/signup", request.url)
-      );
+      return NextResponse.redirect(new URL("/auth/signup", request.url));
     }
 
     const serviceClient = await createServiceClient();
 
-    let { data: profile } = await serviceClient
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("stripe_customer_id")
       .eq("id", user.id)
       .single();
-
-    if (!profile) {
-      await serviceClient.from("profiles").upsert({
-        id: user.id,
-        email: user.email,
-        full_name:
-          user.user_metadata?.full_name || user.user_metadata?.name || null,
-        avatar_url: user.user_metadata?.avatar_url || null,
-      });
-
-      const { data } = await serviceClient
-        .from("profiles")
-        .select("stripe_customer_id")
-        .eq("id", user.id)
-        .single();
-      profile = data;
-    }
 
     let customerId = profile?.stripe_customer_id;
 
@@ -62,17 +43,11 @@ export async function GET(request: NextRequest) {
         .eq("id", user.id);
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const stripeSession = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
       payment_method_types: ["card"],
-      billing_address_collection: "required",
-      line_items: [
-        {
-          price: getPriceId(plan),
-          quantity: 1,
-        },
-      ],
+      line_items: [{ price: getPriceId(plan), quantity: 1 }],
       subscription_data: {
         metadata: { plan, supabase_user_id: user.id },
       },
@@ -83,7 +58,11 @@ export async function GET(request: NextRequest) {
       locale: "fr",
     });
 
-    return NextResponse.redirect(session.url!);
+    if (!stripeSession.url) {
+      throw new Error("Stripe session URL missing");
+    }
+
+    return NextResponse.redirect(stripeSession.url);
   } catch (error) {
     console.error("Checkout error:", error);
     return NextResponse.redirect(new URL("/pricing", request.url));

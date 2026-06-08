@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
+import { activateSubscriptionFromSession } from "@/lib/activate-subscription";
 import { createServiceClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
@@ -29,15 +30,7 @@ export async function POST(request: NextRequest) {
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
-      const userId = session.metadata?.supabase_user_id;
-      const name = session.customer_details?.name;
-
-      if (userId && name) {
-        await supabase
-          .from("profiles")
-          .update({ full_name: name })
-          .eq("id", userId);
-      }
+      await activateSubscriptionFromSession(session);
       break;
     }
 

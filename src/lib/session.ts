@@ -47,14 +47,21 @@ export function clearGeneration() {
 
 export type SubscriptionPlan = "weekly" | "monthly" | "annual";
 
-export function savePlan(plan: SubscriptionPlan) {
-  if (typeof window === "undefined") return;
-  sessionStorage.setItem(PLAN_KEY, plan);
+export function parsePlanValue(
+  value: string | null | undefined
+): SubscriptionPlan {
+  if (value === "weekly" || value === "monthly") return value;
+  return "monthly";
 }
 
 export function getPlan(): SubscriptionPlan {
   if (typeof window === "undefined") return "monthly";
-  return (sessionStorage.getItem(PLAN_KEY) as SubscriptionPlan) || "monthly";
+  return parsePlanValue(localStorage.getItem(PLAN_KEY));
+}
+
+export function clearPlan() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(PLAN_KEY);
 }
 
 export function getPlanLabel(plan: SubscriptionPlan): string {
