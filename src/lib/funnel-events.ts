@@ -16,6 +16,7 @@ export const FUNNEL = {
   generationFailed: "funnel_generation_failed",
   unlockClicked: "funnel_unlock_clicked",
   planSelected: "funnel_plan_selected",
+  paymentCompleted: "funnel_payment_completed",
 } as const;
 
 const PATH_TO_FUNNEL: Record<string, string> = {

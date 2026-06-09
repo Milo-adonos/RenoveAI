@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { clearPlan } from "@/lib/session";
+import { clearPlan, getPlan } from "@/lib/session";
+import { captureFunnelEvent, FUNNEL } from "@/lib/funnel-events";
+import { initPostHog, posthog } from "@/lib/posthog-client";
 
 export function WelcomeToast() {
   const [show, setShow] = useState(false);
@@ -9,6 +11,10 @@ export function WelcomeToast() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("success") === "true") {
+      const plan = getPlan();
+      initPostHog();
+      captureFunnelEvent(posthog, FUNNEL.paymentCompleted, { plan });
+
       clearPlan();
       setShow(true);
       const timer = setTimeout(() => setShow(false), 5000);
@@ -20,7 +26,7 @@ export function WelcomeToast() {
 
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [captureFunnel]);
 
   if (!show) return null;
 
