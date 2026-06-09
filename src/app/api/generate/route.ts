@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createGenerationTask } from "@/lib/kie";
-import { buildFastPrompt } from "@/lib/fast-prompt";
+import { buildFalPrompt, buildGenerationPrompt } from "@/lib/generation-prompt";
 import { generateWithFal, isFalConfigured } from "@/lib/fal";
 import { AI_CHOICE_STYLE } from "@/lib/styles";
 import { getSupabaseConfigStatus } from "@/lib/supabase/config";
@@ -95,18 +95,11 @@ export async function POST(request: NextRequest) {
       console.log("[generate] Étape 2 — URL déjà publique, pas d'upload nécessaire");
     }
 
-    let fullPrompt: string;
+    const fullPrompt = isFalConfigured()
+      ? buildFalPrompt(style, customPrompt)
+      : buildGenerationPrompt(style, customPrompt);
 
-    if (customPrompt?.trim()) {
-      fullPrompt = buildFastPrompt(style, customPrompt);
-      console.log("[generate] Étape 3 — Prompt custom (fast)");
-    } else if (style === AI_CHOICE_STYLE) {
-      fullPrompt = buildFastPrompt(style);
-      console.log("[generate] Étape 3 — Mode Laisse l'IA décider (fast)");
-    } else {
-      fullPrompt = buildFastPrompt(style);
-      console.log("[generate] Étape 3 — Prompt style (fast)");
-    }
+    console.log("[generate] Étape 3 — Prompt prêt", fullPrompt.length, "car.");
 
     console.log("[generate] Étape 4 — Génération IA...");
     if (isFalConfigured()) {

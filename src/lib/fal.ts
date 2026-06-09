@@ -30,6 +30,7 @@ export async function generateWithFal(
         image_url: imageUrl,
         output_format: "jpeg",
         enhance_prompt: false,
+        guidance_scale: 5,
         num_images: 1,
         safety_tolerance: "2",
       }),
