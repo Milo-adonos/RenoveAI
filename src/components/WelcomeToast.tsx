@@ -26,7 +26,7 @@ export function WelcomeToast() {
 
       return () => clearTimeout(timer);
     }
-  }, [captureFunnel]);
+  }, []);
 
   if (!show) return null;
 
