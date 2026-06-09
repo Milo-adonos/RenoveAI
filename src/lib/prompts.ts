@@ -30,7 +30,7 @@ Your taste is impeccable and your instinct is always right.
 
 Study this image with the eye of a master :
 - What is the current state and style of this space ?
-- What are its greatest strengths (natural light, proportions, etc.) ?
+- What are its greatest strengths ?
 - What is holding it back from its full potential ?
 - What design style would make this specific space
   absolutely breathtaking ?
@@ -332,7 +332,6 @@ fairy lights around the monitor.`,
   "Gaming Setup": `Apply a professional gaming setup design to this space.
 Keep the exact architecture and dimensions unchanged.
 
-This style applies primarily to bedroom or office spaces.
 Add: A massive L-shaped gaming desk in black,
 a triple ultrawide monitor setup,
 a professional gaming chair in black with red accents,
@@ -343,11 +342,9 @@ a pegboard for accessories and controllers,
 a dedicated streaming area with ring light and microphone arm,
 a minibar fridge in the corner with LED lighting,
 collectible figures and gaming memorabilia on backlit shelves,
+dark walls in charcoal or black,
 a mechanical keyboard and gaming mouse,
-dark walls (charcoal or black),
-cable management trays hiding all wires,
-a high-end gaming headset on a stand,
-posters of games in backlit frames.`,
+cable management trays hiding all wires.`,
 
   Japonais: `Apply a serene Japanese minimalist design to this space.
 Keep the exact architecture and dimensions unchanged.

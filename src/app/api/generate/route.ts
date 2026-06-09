@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createGenerationTask } from "@/lib/kie";
-import { buildFalPrompt, buildGenerationPrompt } from "@/lib/generation-prompt";
+import { buildGenerationPrompt } from "@/lib/generation-prompt";
 import { generateWithFal, isFalConfigured } from "@/lib/fal";
-import { AI_CHOICE_STYLE } from "@/lib/styles";
 import { getSupabaseConfigStatus } from "@/lib/supabase/config";
 import { uploadImageToStorage } from "@/lib/supabase/storage";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
@@ -95,9 +94,7 @@ export async function POST(request: NextRequest) {
       console.log("[generate] Étape 2 — URL déjà publique, pas d'upload nécessaire");
     }
 
-    const fullPrompt = isFalConfigured()
-      ? buildFalPrompt(style, customPrompt)
-      : buildGenerationPrompt(style, customPrompt);
+    const fullPrompt = buildGenerationPrompt(style, customPrompt);
 
     console.log("[generate] Étape 3 — Prompt prêt", fullPrompt.length, "car.");
 

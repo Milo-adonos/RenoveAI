@@ -1,6 +1,6 @@
 import { GENERATION_MAX_MS } from "@/lib/generation-config";
 
-const FAL_ENDPOINT = "https://fal.run/fal-ai/flux-pro/kontext";
+const FAL_MODEL = "fal-ai/flux-pro/kontext/max";
 
 export function isFalConfigured(): boolean {
   return Boolean(process.env.FAL_KEY?.trim());
@@ -19,7 +19,7 @@ export async function generateWithFal(
   const timeoutId = setTimeout(() => controller.abort(), GENERATION_MAX_MS - 500);
 
   try {
-    const response = await fetch(FAL_ENDPOINT, {
+    const response = await fetch(`https://fal.run/${FAL_MODEL}`, {
       method: "POST",
       headers: {
         Authorization: `Key ${key}`,
@@ -28,11 +28,11 @@ export async function generateWithFal(
       body: JSON.stringify({
         prompt,
         image_url: imageUrl,
-        output_format: "jpeg",
-        enhance_prompt: false,
-        guidance_scale: 5,
+        num_inference_steps: 28,
+        guidance_scale: 3.5,
         num_images: 1,
-        safety_tolerance: "2",
+        output_format: "jpeg",
+        image_size: "square_hd",
       }),
       signal: controller.signal,
     });
