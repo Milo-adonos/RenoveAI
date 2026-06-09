@@ -1,6 +1,6 @@
 import { GENERATION_MAX_MS } from "@/lib/generation-config";
 
-const FAL_MODEL = "fal-ai/flux-pro/kontext/max";
+const FAL_NANO_BANANA_MODEL = "fal-ai/nano-banana-2/edit";
 
 export function isFalConfigured(): boolean {
   return Boolean(process.env.FAL_KEY?.trim());
@@ -10,11 +10,7 @@ export function isKieConfigured(): boolean {
   return Boolean(process.env.KIE_API_KEY?.trim());
 }
 
-/** fal.ai uniquement si GENERATION_PROVIDER=fal (défaut : Kie / nano-banana-2) */
-export function shouldUseFalPrimary(): boolean {
-  return process.env.GENERATION_PROVIDER === "fal";
-}
-
+/** nano-banana-2 sur fal — même modèle que Kie, réponse synchrone plus rapide */
 export async function generateWithFal(
   imageUrl: string,
   prompt: string
@@ -28,23 +24,27 @@ export async function generateWithFal(
   const timeoutId = setTimeout(() => controller.abort(), GENERATION_MAX_MS - 500);
 
   try {
-    const response = await fetch(`https://fal.run/${FAL_MODEL}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Key ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        prompt,
-        image_url: imageUrl,
-        num_inference_steps: 28,
-        guidance_scale: 3.5,
-        num_images: 1,
-        output_format: "jpeg",
-        image_size: "square_hd",
-      }),
-      signal: controller.signal,
-    });
+    const response = await fetch(
+      `https://fal.run/${FAL_NANO_BANANA_MODEL}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Key ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt,
+          image_urls: [imageUrl],
+          num_images: 1,
+          aspect_ratio: "auto",
+          output_format: "jpeg",
+          resolution: "1K",
+          limit_generations: true,
+          enable_web_search: false,
+        }),
+        signal: controller.signal,
+      }
+    );
 
     const data = (await response.json()) as {
       images?: { url: string }[];

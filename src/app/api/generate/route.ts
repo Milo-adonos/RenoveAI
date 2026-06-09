@@ -5,7 +5,6 @@ import {
   generateWithFal,
   isFalConfigured,
   isKieConfigured,
-  shouldUseFalPrimary,
 } from "@/lib/fal";
 import { getSupabaseConfigStatus } from "@/lib/supabase/config";
 import { uploadImageToStorage } from "@/lib/supabase/storage";
@@ -103,23 +102,35 @@ export async function POST(request: NextRequest) {
 
     console.log("[generate] Étape 3 — Prompt prêt", fullPrompt.length, "car.");
 
-    console.log("[generate] Étape 4 — Génération IA (nano-banana-2 via Kie)...");
+    console.log("[generate] Étape 4 — Génération nano-banana-2...");
 
-    if (shouldUseFalPrimary() && isFalConfigured()) {
-      const generatedUrl = await generateWithFal(finalImageUrl, fullPrompt);
-      console.log("[generate] Fal OK — image prête");
-      return NextResponse.json({ generatedUrl, style, customPrompt, sync: true });
+    if (isFalConfigured()) {
+      try {
+        const generatedUrl = await generateWithFal(finalImageUrl, fullPrompt);
+        console.log("[generate] fal nano-banana-2 OK");
+        return NextResponse.json({
+          generatedUrl,
+          style,
+          customPrompt,
+          sync: true,
+        });
+      } catch (falError) {
+        console.warn(
+          "[generate] fal nano-banana-2 échoué, repli Kie:",
+          falError
+        );
+      }
     }
 
     if (!isKieConfigured()) {
       return NextResponse.json(
-        { error: "KIE_API_KEY not configured" },
+        { error: "Aucun provider IA configuré (FAL_KEY ou KIE_API_KEY)" },
         { status: 500 }
       );
     }
 
     const taskId = await createGenerationTask(finalImageUrl, fullPrompt);
-    console.log("[generate] Kie task ID:", taskId);
+    console.log("[generate] Kie nano-banana-2 task ID:", taskId);
 
     return NextResponse.json({ taskId, style, customPrompt });
   } catch (error) {
