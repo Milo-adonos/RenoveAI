@@ -1,26 +1,19 @@
 "use client";
 
-import posthog from "posthog-js";
 import { PostHogProvider as PHProvider } from "posthog-js/react";
-import { useEffect } from "react";
-
-const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-const POSTHOG_HOST =
-  process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://eu.i.posthog.com";
+import { useEffect, useState } from "react";
+import { initPostHog, isPostHogConfigured, posthog } from "@/lib/posthog-client";
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
-  useEffect(() => {
-    if (!POSTHOG_KEY) return;
+  const [ready, setReady] = useState(false);
 
-    posthog.init(POSTHOG_KEY, {
-      api_host: POSTHOG_HOST,
-      person_profiles: "identified_only",
-      capture_pageview: false,
-      capture_pageleave: true,
-    });
+  useEffect(() => {
+    if (!isPostHogConfigured()) return;
+    initPostHog();
+    setReady(true);
   }, []);
 
-  if (!POSTHOG_KEY) {
+  if (!isPostHogConfigured() || !ready) {
     return <>{children}</>;
   }
 

@@ -7,10 +7,10 @@ import { usePostHog } from "posthog-js/react";
 export function PostHogPageView() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const posthog = usePostHog();
+  const posthogClient = usePostHog();
 
   useEffect(() => {
-    if (!pathname || !posthog) return;
+    if (!pathname || !posthogClient) return;
 
     let url = window.origin + pathname;
     const query = searchParams.toString();
@@ -18,8 +18,8 @@ export function PostHogPageView() {
       url += `?${query}`;
     }
 
-    posthog.capture("$pageview", { $current_url: url });
-  }, [pathname, searchParams, posthog]);
+    posthogClient.capture("$pageview", { $current_url: url });
+  }, [pathname, searchParams, posthogClient]);
 
   return null;
 }
