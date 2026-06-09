@@ -15,9 +15,11 @@ export function initPostHog(): typeof posthog | null {
   if (!posthog.__loaded) {
     posthog.init(POSTHOG_KEY!, {
       api_host: POSTHOG_HOST,
+      ui_host: "https://eu.posthog.com",
       person_profiles: "identified_only",
       capture_pageview: false,
       capture_pageleave: true,
+      persistence: "localStorage+cookie",
     });
   }
 
