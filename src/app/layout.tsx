@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Fraunces, Inter, Playfair_Display } from "next/font/google";
+import { ClarityAnalytics } from "@/components/ClarityAnalytics";
+import { PostHogPageView } from "@/components/PostHogPageView";
+import { PostHogProvider } from "@/components/PostHogProvider";
 import "./globals.css";
 
 const inter = Inter({
@@ -34,7 +38,13 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${playfair.variable} ${fraunces.variable}`}
       >
-        {children}
+        <PostHogProvider>
+          <Suspense fallback={null}>
+            <PostHogPageView />
+          </Suspense>
+          <ClarityAnalytics />
+          {children}
+        </PostHogProvider>
       </body>
     </html>
   );
