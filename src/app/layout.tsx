@@ -26,10 +26,6 @@ export const metadata: Metadata = {
   title: "Renove AI — Redesigne ta pièce avec l'IA",
   description:
     "Prends une photo, choisis un style et l'IA redesigne ta pièce en 30 secondes.",
-  icons: {
-    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
-    shortcut: ["/favicon.svg"],
-  },
 };
 
 export default function RootLayout({
