@@ -1,12 +1,13 @@
 import {
   AI_CHOICE_PROMPT,
+  STRUCTURE_LOCK,
   SYSTEM_PROMPT,
   stylePrompts,
 } from "@/lib/prompts";
 
 export const AI_CHOICE_STYLE = "ai_choice";
 
-export { AI_CHOICE_PROMPT, SYSTEM_PROMPT, stylePrompts };
+export { AI_CHOICE_PROMPT, STRUCTURE_LOCK, SYSTEM_PROMPT, stylePrompts };
 
 export type SpaceType =
   | "bedroom"

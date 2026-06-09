@@ -1,4 +1,5 @@
 import { GENERATION_MAX_MS } from "@/lib/generation-config";
+import { buildFalGenerationPrompts } from "@/lib/generation-prompt";
 
 const FAL_NANO_BANANA_MODEL = "fal-ai/nano-banana-2/edit";
 
@@ -13,12 +14,15 @@ export function isKieConfigured(): boolean {
 /** nano-banana-2 sur fal — même modèle que Kie, réponse synchrone plus rapide */
 export async function generateWithFal(
   imageUrl: string,
-  prompt: string
+  style?: string | null,
+  customPrompt?: string | null
 ): Promise<string> {
   const key = process.env.FAL_KEY?.trim();
   if (!key) {
     throw new Error("FAL_KEY not configured");
   }
+
+  const { systemPrompt, prompt } = buildFalGenerationPrompts(style, customPrompt);
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), GENERATION_MAX_MS - 500);
@@ -33,6 +37,7 @@ export async function generateWithFal(
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
+          system_prompt: systemPrompt,
           prompt,
           image_urls: [imageUrl],
           num_images: 1,
@@ -41,6 +46,7 @@ export async function generateWithFal(
           resolution: "1K",
           limit_generations: true,
           enable_web_search: false,
+          thinking_level: "high",
         }),
         signal: controller.signal,
       }

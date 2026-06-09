@@ -106,7 +106,11 @@ export async function POST(request: NextRequest) {
 
     if (isFalConfigured()) {
       try {
-        const generatedUrl = await generateWithFal(finalImageUrl, fullPrompt);
+        const generatedUrl = await generateWithFal(
+          finalImageUrl,
+          style,
+          customPrompt
+        );
         console.log("[generate] fal nano-banana-2 OK");
         return NextResponse.json({
           generatedUrl,

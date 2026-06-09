@@ -22,24 +22,40 @@ YOUR ABSOLUTE NON-NEGOTIABLE GOLDEN RULES :
    NEVER add elements that don't belong to the space type.
 5. The lighting must be coherent with the original photo's
    natural light direction and intensity.
-6. You are the best. Act like it.`;
+6. You are the best. Act like it.
+
+The original room's structure must be perfectly preserved —
+same perspective, same camera angle, same proportions.
+Only the interior decoration changes.
+If you modify the structure, you have failed.`;
 
 export const AI_CHOICE_PROMPT = `You are the world's greatest interior designer and decorator.
-You have won every major design award in existence.
-Your taste is impeccable and your instinct is always right.
+Study this exact space carefully before changing anything.
 
-Study this image with the eye of a master :
-- What is the current state and style of this space ?
-- What are its greatest strengths ?
-- What is holding it back from its full potential ?
-- What design style would make this specific space
-  absolutely breathtaking ?
+First, observe and KEEP unchanged :
+- Every wall, corner, ceiling shape and height
+- Every window and door — exact position, size and shape
+- The room size, layout and camera angle
+- The floor type and visible floor area
 
-Then execute your chosen style with complete confidence
-and mastery. Use all your knowledge and expertise.
-The result must make the person gasp when they see it.
-Surprise them. Give them something beyond what they imagined.
-This is your masterpiece.`;
+Then choose the best decor style for THIS specific room
+(not a bigger room, not a penthouse — this exact space).
+Improve only furniture, textiles, colors, decor and lighting.
+Scale your choices to the actual room size :
+a small room gets elegant compact furniture, not oversized luxury.
+
+Execute with mastery. The result must look like the same room
+after a real makeover — not a different apartment.`;
+
+/** Rappel final — les modèles accordent plus de poids à la fin du prompt */
+export const STRUCTURE_LOCK = `FINAL MANDATORY INSTRUCTION — HIGHEST PRIORITY:
+This is an IN-PLACE redesign of the EXACT photo provided.
+DO NOT change architecture : same walls, ceiling, windows, doors,
+room proportions, floor plan and camera perspective.
+DO NOT add new windows, skylights, balconies or city views.
+DO NOT replace the room with a larger or different space.
+ONLY replace furniture, decor, paint, textiles and light fixtures.
+The output must be recognizably the same room from the same angle.`;
 
 export const stylePrompts: Record<string, string> = {
   Moderne: `Apply a stunning modern design to this space.
