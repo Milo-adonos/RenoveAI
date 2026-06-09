@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { getGeneration } from "@/lib/session";
+import { FUNNEL } from "@/lib/funnel-events";
+import { useFunnelCapture } from "@/hooks/useFunnelCapture";
 import { createClient } from "@/lib/supabase/client";
 
 const TIMER_SECONDS = 10 * 60;
@@ -24,7 +26,8 @@ function formatTime(seconds: number): string {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
-function vibrateOnClick() {
+function vibrateOnClick(captureFunnel: (event: string) => void) {
+  captureFunnel(FUNNEL.unlockClicked);
   if (navigator.vibrate) {
     navigator.vibrate(50);
   }
@@ -32,6 +35,7 @@ function vibrateOnClick() {
 
 export default function PreviewPage() {
   const router = useRouter();
+  const captureFunnel = useFunnelCapture();
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [aspectRatio, setAspectRatio] = useState<number>(4 / 3);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -186,7 +190,7 @@ export default function PreviewPage() {
 
             <Link
               href="/pricing"
-              onClick={vibrateOnClick}
+              onClick={() => vibrateOnClick(captureFunnel)}
               className="absolute top-1/2 left-1/2 animate-preview-pulse bg-accent hover:bg-accent-hover text-white font-bold text-base sm:text-lg px-6 py-3.5 rounded-2xl shadow-lg transition-colors text-center whitespace-nowrap z-10"
             >
               🔒 Débloque ton rendu
@@ -208,7 +212,7 @@ export default function PreviewPage() {
 
         <Link
           href="/pricing"
-          onClick={vibrateOnClick}
+          onClick={() => vibrateOnClick(captureFunnel)}
           className="block w-full bg-accent hover:bg-accent-hover text-white font-bold text-lg py-5 px-6 rounded-2xl text-center mt-8 transition-colors btn-preview-cta"
         >
           🔓 Voir mon rendu maintenant →

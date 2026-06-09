@@ -9,6 +9,8 @@ import {
   getPricingTimerEnd,
   isPricingTimerExpired,
 } from "@/lib/pricing-timer";
+import { FUNNEL } from "@/lib/funnel-events";
+import { useFunnelCapture } from "@/hooks/useFunnelCapture";
 const monthlyFeatures = [
   "Générations illimitées",
   "Téléchargement HD",
@@ -61,6 +63,7 @@ function FeatureList({ items }: { items: string[] }) {
 
 export default function PricingPage() {
   const router = useRouter();
+  const captureFunnel = useFunnelCapture();
   const [loadingPlan, setLoadingPlan] = useState<SubscriptionPlan | null>(null);
   const [timerEnd, setTimerEnd] = useState<number | null>(null);
   const [remainingMs, setRemainingMs] = useState(0);
@@ -83,6 +86,7 @@ export default function PricingPage() {
   const expired = isPricingTimerExpired(remainingMs);
 
   function handlePlanSelect(plan: "monthly" | "weekly") {
+    captureFunnel(FUNNEL.planSelected, { plan });
     setLoadingPlan(plan);
     localStorage.setItem("selectedPlan", plan);
     router.push("/auth/signup");

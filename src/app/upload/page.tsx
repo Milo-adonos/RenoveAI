@@ -7,11 +7,14 @@ import { Header } from "@/components/Header";
 import { StyleCarousel } from "@/components/StyleCarousel";
 import { AI_CHOICE_STYLE } from "@/lib/styles";
 import { compressImageForGeneration } from "@/lib/compress-image";
+import { FUNNEL } from "@/lib/funnel-events";
+import { useFunnelCapture } from "@/hooks/useFunnelCapture";
 import { saveGeneration } from "@/lib/session";
 import { createClient } from "@/lib/supabase/client";
 
 export default function UploadPage() {
   const router = useRouter();
+  const captureFunnel = useFunnelCapture();
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -48,6 +51,11 @@ export default function UploadPage() {
 
     setLoading(true);
     setError("");
+
+    captureFunnel(FUNNEL.generationStarted, {
+      style: selectedStyle || "custom",
+      has_custom_prompt: Boolean(customPrompt.trim()),
+    });
 
     try {
       const compressed = await compressImageForGeneration(file);

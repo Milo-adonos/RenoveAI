@@ -8,6 +8,8 @@ import {
   GENERATION_TYPICAL_MS,
 } from "@/lib/generation-config";
 import { getGeneration, saveGeneration } from "@/lib/session";
+import { FUNNEL } from "@/lib/funnel-events";
+import { useFunnelCapture } from "@/hooks/useFunnelCapture";
 
 const STATUS_MESSAGES = [
   "Analyse de ta pièce en cours...",
@@ -152,6 +154,7 @@ function getMessageIndex(elapsedMs: number): number {
 
 export default function LoadingPage() {
   const router = useRouter();
+  const captureFunnel = useFunnelCapture();
   const startTimeRef = useRef(Date.now());
   const doneRef = useRef(false);
   const abortRef = useRef(false);
@@ -168,8 +171,11 @@ export default function LoadingPage() {
   const showFailure = useCallback(() => {
     if (doneRef.current) return;
     doneRef.current = true;
+    captureFunnel(FUNNEL.generationFailed, {
+      elapsed_ms: Date.now() - startTimeRef.current,
+    });
     setHasFailed(true);
-  }, []);
+  }, [captureFunnel]);
 
   const fail = useCallback(
     (detail?: string) => {
@@ -207,13 +213,16 @@ export default function LoadingPage() {
       }
       setFinishing(true);
       setProgress(100);
+      captureFunnel(FUNNEL.generationCompleted, {
+        elapsed_ms: Date.now() - startTimeRef.current,
+      });
 
       setTimeout(() => {
         saveGeneration({ generatedUrl });
         router.push("/preview");
       }, FINISH_TRANSITION_MS);
     },
-    [router]
+    [router, captureFunnel]
   );
 
   useEffect(() => {
