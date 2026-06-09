@@ -115,6 +115,7 @@ const POLL_INTERVAL_MS = GENERATION_POLL_INTERVAL_MS;
 const TICK_MS = 100;
 const MAX_GENERATION_MS = GENERATION_MAX_MS;
 const PATIENCE_AFTER_MS = 25_000;
+const ERROR_MESSAGE_AFTER_MS = 40_000;
 const MESSAGE_INTERVAL_MS = 6_000;
 const TIP_INTERVAL_MS = 6_000;
 const TIP_FADE_MS = 500;
@@ -154,6 +155,7 @@ export default function LoadingPage() {
   const startTimeRef = useRef(Date.now());
   const doneRef = useRef(false);
   const abortRef = useRef(false);
+  const failTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [progress, setProgress] = useState(0);
   const [messageIndex, setMessageIndex] = useState(0);
@@ -163,12 +165,35 @@ export default function LoadingPage() {
   const [hasFailed, setHasFailed] = useState(false);
   const [finishing, setFinishing] = useState(false);
 
-  const fail = useCallback((detail?: string) => {
+  const showFailure = useCallback(() => {
     if (doneRef.current) return;
     doneRef.current = true;
-    abortRef.current = true;
-    if (detail) console.error("[loading]", detail);
     setHasFailed(true);
+  }, []);
+
+  const fail = useCallback(
+    (detail?: string) => {
+      if (abortRef.current) return;
+      abortRef.current = true;
+      if (detail) console.error("[loading]", detail);
+
+      const elapsed = Date.now() - startTimeRef.current;
+      const delay = Math.max(0, ERROR_MESSAGE_AFTER_MS - elapsed);
+
+      if (failTimeoutRef.current) {
+        clearTimeout(failTimeoutRef.current);
+      }
+      failTimeoutRef.current = setTimeout(showFailure, delay);
+    },
+    [showFailure]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (failTimeoutRef.current) {
+        clearTimeout(failTimeoutRef.current);
+      }
+    };
   }, []);
 
   const complete = useCallback(
@@ -176,6 +201,10 @@ export default function LoadingPage() {
       if (doneRef.current) return;
       doneRef.current = true;
       abortRef.current = true;
+      if (failTimeoutRef.current) {
+        clearTimeout(failTimeoutRef.current);
+        failTimeoutRef.current = null;
+      }
       setFinishing(true);
       setProgress(100);
 
