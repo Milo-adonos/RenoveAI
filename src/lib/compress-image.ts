@@ -1,5 +1,5 @@
-const MAX_SIDE = 768;
-const JPEG_QUALITY = 0.78;
+const MAX_SIDE = 512;
+const JPEG_QUALITY = 0.72;
 
 export async function compressImageForGeneration(
   file: File
@@ -11,7 +11,7 @@ export async function compressImageForGeneration(
   const bitmap = await createImageBitmap(file);
   const { width, height } = bitmap;
 
-  if (width <= MAX_SIDE && height <= MAX_SIDE && file.size <= 1_200_000) {
+  if (width <= MAX_SIDE && height <= MAX_SIDE && file.size <= 800_000) {
     bitmap.close();
     return { file, width, height };
   }

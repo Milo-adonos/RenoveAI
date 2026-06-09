@@ -148,6 +148,14 @@ export async function createGenerationTask(
   imageUrl: string,
   prompt: string
 ): Promise<string> {
+  let resolution = KIE_RESOLUTION;
+  const resolutionUpper = resolution.toUpperCase();
+  if (resolutionUpper === "2K" || resolutionUpper === "4K") {
+    resolution = "1024x1024";
+  } else {
+    resolution = "1K";
+  }
+
   const response = await fetch(`${KIE_API_BASE}/api/v1/jobs/createTask`, {
     method: "POST",
     headers: {
@@ -160,8 +168,9 @@ export async function createGenerationTask(
         prompt,
         image_input: [imageUrl],
         aspect_ratio: "auto",
-        resolution: KIE_RESOLUTION,
+        resolution,
         output_format: "jpg",
+        thinking: "low",
       },
     }),
   });

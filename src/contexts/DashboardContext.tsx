@@ -14,7 +14,7 @@ import { isBypassAuthEnabled, getDevBypassUser } from "@/lib/dev-bypass";
 import { addDevCreation } from "@/lib/dev-creations";
 import { getNextMonday, WEEKLY_LIMIT } from "@/lib/weekly-generations";
 
-import { pollGenerationUntilDone } from "@/lib/poll-generation";
+import { resolveGenerationResponse } from "@/lib/poll-generation";
 const DEV_WEEKLY_KEY = "renove_dev_weekly_used";
 
 export type PendingGeneration = {
@@ -124,9 +124,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || "Generation failed");
 
-          const { taskId } = data as { taskId: string };
-          const generatedUrl = await pollGenerationUntilDone(
-            taskId,
+          const generatedUrl = await resolveGenerationResponse(
+            data,
             generationStartedAt
           );
 
@@ -185,9 +184,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Generation failed");
 
-        const { taskId } = data as { taskId: string };
-        const generatedUrl = await pollGenerationUntilDone(
-          taskId,
+        const generatedUrl = await resolveGenerationResponse(
+          data,
           generationStartedAt
         );
 

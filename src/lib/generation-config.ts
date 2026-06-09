@@ -1,8 +1,11 @@
-/** Temps typique Kie — sert à l'UI (message patience, barre de progression) */
-export const GENERATION_TYPICAL_MS = 25_000;
+/** Objectif affiché (barre de progression) */
+export const GENERATION_TYPICAL_MS = 20_000;
 
-/** Filet de sécurité absolu (réseau bloqué) — pas une limite Kie volontaire */
-export const GENERATION_SAFETY_TIMEOUT_MS = 180_000;
+/** Limite max — génération coupée au-delà */
+export const GENERATION_MAX_MS = 25_000;
 
-/** Intervalle entre chaque vérification du statut Kie */
-export const GENERATION_POLL_INTERVAL_MS = 500;
+/** Alias pour le polling et la page loading */
+export const GENERATION_SAFETY_TIMEOUT_MS = GENERATION_MAX_MS;
+
+/** Vérification statut Kie */
+export const GENERATION_POLL_INTERVAL_MS = 400;

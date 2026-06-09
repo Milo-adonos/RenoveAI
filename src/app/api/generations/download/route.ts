@@ -8,6 +8,7 @@ function isAllowedImageHost(url: string): boolean {
     const { hostname } = new URL(url);
     return (
       hostname.endsWith("kie.ai") ||
+      hostname.endsWith("fal.media") ||
       hostname.endsWith("supabase.co") ||
       hostname.endsWith("supabase.in")
     );

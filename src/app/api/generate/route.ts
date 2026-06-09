@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createGenerationTask } from "@/lib/kie";
-import { AI_CHOICE_STYLE, buildFullPrompt } from "@/lib/styles";
+import { buildFastPrompt } from "@/lib/fast-prompt";
+import { generateWithFal, isFalConfigured } from "@/lib/fal";
+import { AI_CHOICE_STYLE } from "@/lib/styles";
 import { getSupabaseConfigStatus } from "@/lib/supabase/config";
 import { uploadImageToStorage } from "@/lib/supabase/storage";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
@@ -96,19 +98,25 @@ export async function POST(request: NextRequest) {
     let fullPrompt: string;
 
     if (customPrompt?.trim()) {
-      fullPrompt = buildFullPrompt(style, customPrompt);
-      console.log("[generate] Étape 3 — Prompt custom");
+      fullPrompt = buildFastPrompt(style, customPrompt);
+      console.log("[generate] Étape 3 — Prompt custom (fast)");
     } else if (style === AI_CHOICE_STYLE) {
-      fullPrompt = buildFullPrompt(style);
-      console.log("[generate] Étape 3 — Mode Laisse l'IA décider");
+      fullPrompt = buildFastPrompt(style);
+      console.log("[generate] Étape 3 — Mode Laisse l'IA décider (fast)");
     } else {
-      fullPrompt = buildFullPrompt(style, null, "other");
-      console.log("[generate] Étape 3 — Prompt style (sans détection d'espace)");
+      fullPrompt = buildFastPrompt(style);
+      console.log("[generate] Étape 3 — Prompt style (fast)");
     }
 
-    console.log("[generate] Étape 4 — Appel Kie.ai...");
+    console.log("[generate] Étape 4 — Génération IA...");
+    if (isFalConfigured()) {
+      const generatedUrl = await generateWithFal(finalImageUrl, fullPrompt);
+      console.log("[generate] Fal OK — image prête");
+      return NextResponse.json({ generatedUrl, style, customPrompt, sync: true });
+    }
+
     const taskId = await createGenerationTask(finalImageUrl, fullPrompt);
-    console.log("[generate] Task ID:", taskId);
+    console.log("[generate] Kie task ID:", taskId);
 
     return NextResponse.json({ taskId, style, customPrompt });
   } catch (error) {

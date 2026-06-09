@@ -4,7 +4,16 @@ import {
 } from "@/lib/generation-config";
 
 const SAFETY_TIMEOUT_MESSAGE =
-  "La génération a pris trop de temps. Réessayez.";
+  "La génération a pris trop de temps (25 s max). Réessayez.";
+
+export async function resolveGenerationResponse(
+  data: { generatedUrl?: string; taskId?: string },
+  startedAt = Date.now()
+): Promise<string> {
+  if (data.generatedUrl) return data.generatedUrl;
+  if (!data.taskId) throw new Error("La génération a échoué");
+  return pollGenerationUntilDone(data.taskId, startedAt);
+}
 
 export async function pollGenerationUntilDone(
   taskId: string,

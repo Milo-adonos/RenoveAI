@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  GENERATION_MAX_MS,
   GENERATION_POLL_INTERVAL_MS,
-  GENERATION_SAFETY_TIMEOUT_MS,
   GENERATION_TYPICAL_MS,
 } from "@/lib/generation-config";
 import { getGeneration, saveGeneration } from "@/lib/session";
@@ -113,8 +113,8 @@ const tips = [
 
 const POLL_INTERVAL_MS = GENERATION_POLL_INTERVAL_MS;
 const TICK_MS = 100;
-const SAFETY_TIMEOUT_MS = GENERATION_SAFETY_TIMEOUT_MS;
-const PATIENCE_AFTER_MS = GENERATION_TYPICAL_MS;
+const MAX_GENERATION_MS = GENERATION_MAX_MS;
+const PATIENCE_AFTER_MS = 18_000;
 const MESSAGE_INTERVAL_MS = 6_000;
 const TIP_INTERVAL_MS = 6_000;
 const TIP_FADE_MS = 500;
@@ -227,8 +227,8 @@ export default function LoadingPage() {
       }
 
       const timeoutId = setTimeout(() => {
-        fail("Filet de sécurité — génération bloquée trop longtemps");
-      }, SAFETY_TIMEOUT_MS);
+        fail("La génération a pris trop de temps (25 s max)");
+      }, MAX_GENERATION_MS);
 
       try {
         const res = await fetch("/api/generate", {
@@ -247,6 +247,12 @@ export default function LoadingPage() {
 
         if (!res.ok) {
           fail(data.error || data.hint || "Impossible de lancer la génération");
+          return;
+        }
+
+        if (data.generatedUrl) {
+          clearTimeout(timeoutId);
+          complete(data.generatedUrl as string);
           return;
         }
 
