@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createGenerationTask } from "@/lib/kie";
 import { buildGenerationPrompt } from "@/lib/generation-prompt";
-import { generateWithFal, isFalConfigured } from "@/lib/fal";
+import {
+  generateWithFal,
+  isFalConfigured,
+  isKieConfigured,
+  shouldUseFalPrimary,
+} from "@/lib/fal";
 import { getSupabaseConfigStatus } from "@/lib/supabase/config";
 import { uploadImageToStorage } from "@/lib/supabase/storage";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
@@ -98,11 +103,19 @@ export async function POST(request: NextRequest) {
 
     console.log("[generate] Étape 3 — Prompt prêt", fullPrompt.length, "car.");
 
-    console.log("[generate] Étape 4 — Génération IA...");
-    if (isFalConfigured()) {
+    console.log("[generate] Étape 4 — Génération IA (nano-banana-2 via Kie)...");
+
+    if (shouldUseFalPrimary() && isFalConfigured()) {
       const generatedUrl = await generateWithFal(finalImageUrl, fullPrompt);
       console.log("[generate] Fal OK — image prête");
       return NextResponse.json({ generatedUrl, style, customPrompt, sync: true });
+    }
+
+    if (!isKieConfigured()) {
+      return NextResponse.json(
+        { error: "KIE_API_KEY not configured" },
+        { status: 500 }
+      );
     }
 
     const taskId = await createGenerationTask(finalImageUrl, fullPrompt);

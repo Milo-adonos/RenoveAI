@@ -114,7 +114,7 @@ const tips = [
 const POLL_INTERVAL_MS = GENERATION_POLL_INTERVAL_MS;
 const TICK_MS = 100;
 const MAX_GENERATION_MS = GENERATION_MAX_MS;
-const PATIENCE_AFTER_MS = 18_000;
+const PATIENCE_AFTER_MS = 35_000;
 const MESSAGE_INTERVAL_MS = 6_000;
 const TIP_INTERVAL_MS = 6_000;
 const TIP_FADE_MS = 500;
@@ -227,7 +227,7 @@ export default function LoadingPage() {
       }
 
       const timeoutId = setTimeout(() => {
-        fail("La génération a pris trop de temps (25 s max)");
+        fail("La génération a pris trop de temps. Réessayez.");
       }, MAX_GENERATION_MS);
 
       try {

@@ -4,7 +4,7 @@ import {
 } from "@/lib/generation-config";
 
 const SAFETY_TIMEOUT_MESSAGE =
-  "La génération a pris trop de temps (25 s max). Réessayez.";
+  "La génération a pris trop de temps. Réessayez.";
 
 export async function resolveGenerationResponse(
   data: { generatedUrl?: string; taskId?: string },

@@ -6,6 +6,15 @@ export function isFalConfigured(): boolean {
   return Boolean(process.env.FAL_KEY?.trim());
 }
 
+export function isKieConfigured(): boolean {
+  return Boolean(process.env.KIE_API_KEY?.trim());
+}
+
+/** fal.ai uniquement si GENERATION_PROVIDER=fal (défaut : Kie / nano-banana-2) */
+export function shouldUseFalPrimary(): boolean {
+  return process.env.GENERATION_PROVIDER === "fal";
+}
+
 export async function generateWithFal(
   imageUrl: string,
   prompt: string
@@ -55,7 +64,7 @@ export async function generateWithFal(
     return url;
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") {
-      throw new Error("La génération a pris trop de temps (25 s max). Réessayez.");
+      throw new Error("La génération a pris trop de temps. Réessayez.");
     }
     throw err;
   } finally {
