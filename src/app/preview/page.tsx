@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
@@ -10,6 +10,32 @@ import { useFunnelCapture } from "@/hooks/useFunnelCapture";
 import { createClient } from "@/lib/supabase/client";
 
 const TIMER_SECONDS = 10 * 60;
+const SHARP_WIDTH_PERCENT = 35;
+const SHARP_HEIGHT_PERCENT = 40;
+const BLUR_PX = 12;
+const OVERLAY_RGBA = "rgba(0,0,0,0.3)";
+const REVEAL_MS = 300;
+const CURTAIN_MS = 600;
+
+const antiScreenshotStyle: CSSProperties = {
+  userSelect: "none",
+  WebkitUserSelect: "none",
+  WebkitTouchCallout: "none",
+};
+
+function blurPanelStyle(
+  animationDone: boolean,
+  skipTransition: boolean
+): CSSProperties {
+  return {
+    backdropFilter: `blur(${BLUR_PX}px)`,
+    WebkitBackdropFilter: `blur(${BLUR_PX}px)`,
+    backgroundColor: OVERLAY_RGBA,
+    clipPath: animationDone ? "inset(0 0 0 0)" : "inset(0 0 100% 0)",
+    transition: skipTransition ? "none" : `clip-path ${CURTAIN_MS}ms ease-in`,
+    pointerEvents: "none",
+  };
+}
 
 function loadImageAspectRatio(url: string): Promise<number> {
   return new Promise((resolve) => {
@@ -65,7 +91,7 @@ export default function PreviewPage() {
     const timer = setTimeout(() => {
       setAnimationDone(true);
       sessionStorage.setItem("previewSeen", "true");
-    }, 300);
+    }, REVEAL_MS);
 
     return () => clearTimeout(timer);
   }, []);
@@ -150,51 +176,115 @@ export default function PreviewPage() {
 
       <div className="px-5 max-w-lg mx-auto w-full">
         <div
-          className="w-full rounded-2xl shadow-card"
+          className="relative w-full rounded-2xl shadow-card overflow-hidden"
           style={{ aspectRatio }}
         >
-          <div style={{ position: "relative", overflow: "hidden" }}>
+          <div
+            className="absolute inset-0"
+            onContextMenu={(e) => e.preventDefault()}
+            style={antiScreenshotStyle}
+          >
             <img
               src={generatedUrl}
-              alt="Rendu flouté"
+              alt="Aperçu du rendu"
+              className="w-full h-full object-cover"
               style={{
-                width: "100%",
-                display: "block",
-                userSelect: "none",
-                WebkitUserSelect: "none",
+                ...antiScreenshotStyle,
                 pointerEvents: "none",
               }}
               onContextMenu={(e) => e.preventDefault()}
               draggable={false}
             />
 
+            {/* Zone floutée — bande droite (65% largeur) */}
             <div
               aria-hidden="true"
+              className="absolute top-0 right-0"
               style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
+                width: `${100 - SHARP_WIDTH_PERCENT}%`,
                 height: "100%",
-                backdropFilter: "blur(10px)",
-                WebkitBackdropFilter: "blur(10px)",
-                clipPath: animationDone
-                  ? "inset(0 0 0% 0)"
-                  : "inset(0 0 100% 0)",
-                transition: skipTransition
-                  ? "none"
-                  : "clip-path 0.6s ease-in",
-                pointerEvents: "none",
+                ...blurPanelStyle(animationDone, skipTransition),
               }}
             />
 
-            <Link
-              href="/pricing"
-              onClick={() => vibrateOnClick(captureFunnel)}
-              className="absolute top-1/2 left-1/2 animate-preview-pulse bg-accent hover:bg-accent-hover text-white font-bold text-base sm:text-lg px-6 py-3.5 rounded-2xl shadow-lg transition-colors text-center whitespace-nowrap z-10"
-            >
-              🔒 Débloque ton rendu
-            </Link>
+            {/* Zone floutée — bande basse gauche */}
+            <div
+              aria-hidden="true"
+              className="absolute left-0 bottom-0"
+              style={{
+                width: `${SHARP_WIDTH_PERCENT}%`,
+                height: `${100 - SHARP_HEIGHT_PERCENT}%`,
+                ...blurPanelStyle(animationDone, skipTransition),
+              }}
+            />
+
+            {/* Zone visible — bordure lumineuse terracotta/dorée */}
+            <div
+              aria-hidden="true"
+              className="absolute top-0 left-0 z-10 pointer-events-none rounded-tl-2xl"
+              style={{
+                width: `${SHARP_WIDTH_PERCENT}%`,
+                height: `${SHARP_HEIGHT_PERCENT}%`,
+                border: "2px solid #C8956C",
+                boxShadow:
+                  "0 0 0 1px rgba(160, 82, 45, 0.5), 0 0 16px rgba(200, 149, 108, 0.65), inset 0 0 20px rgba(255, 240, 220, 0.15)",
+                opacity: animationDone ? 1 : 0,
+                transition: skipTransition
+                  ? "none"
+                  : `opacity ${CURTAIN_MS}ms ease-in`,
+              }}
+            />
+
+            {/* Séparateur vertical */}
+            <div
+              aria-hidden="true"
+              className="absolute top-0 z-10 pointer-events-none"
+              style={{
+                left: `${SHARP_WIDTH_PERCENT}%`,
+                width: 3,
+                height: "100%",
+                transform: "translateX(-50%)",
+                background:
+                  "linear-gradient(to bottom, #A0522D 0%, rgba(160, 82, 45, 0.4) 40%, transparent 100%)",
+                opacity: animationDone ? 1 : 0,
+                transition: skipTransition
+                  ? "none"
+                  : `opacity ${CURTAIN_MS}ms ease-in`,
+              }}
+            />
+
+            {/* Séparateur horizontal */}
+            <div
+              aria-hidden="true"
+              className="absolute left-0 z-10 pointer-events-none"
+              style={{
+                top: `${SHARP_HEIGHT_PERCENT}%`,
+                width: `${SHARP_WIDTH_PERCENT}%`,
+                height: 3,
+                transform: "translateY(-50%)",
+                background:
+                  "linear-gradient(to right, #A0522D 0%, rgba(160, 82, 45, 0.4) 50%, transparent 100%)",
+                opacity: animationDone ? 1 : 0,
+                transition: skipTransition
+                  ? "none"
+                  : `opacity ${CURTAIN_MS}ms ease-in`,
+              }}
+            />
+
+            {/* Badge sur la zone floutée */}
+            {animationDone && (
+              <Link
+                href="/pricing"
+                onClick={() => vibrateOnClick(captureFunnel)}
+                className="absolute z-20 animate-preview-pulse bg-accent hover:bg-accent-hover text-white font-bold text-sm sm:text-base px-5 py-3 rounded-2xl shadow-lg transition-colors text-center whitespace-nowrap"
+                style={{
+                  left: `${SHARP_WIDTH_PERCENT + (100 - SHARP_WIDTH_PERCENT) / 2}%`,
+                  top: `${SHARP_HEIGHT_PERCENT + (100 - SHARP_HEIGHT_PERCENT) / 2}%`,
+                }}
+              >
+                🔒 Débloque le rendu complet
+              </Link>
+            )}
           </div>
         </div>
 
@@ -205,8 +295,9 @@ export default function PreviewPage() {
           <p className="text-sm text-muted mt-3">
             ⭐⭐⭐⭐⭐ 4,8/5 — rejoins +2 300 utilisateurs satisfaits
           </p>
-          <p className="font-hero text-[20px] sm:text-[22px] text-foreground mt-4 leading-relaxed">
-            Débloque le rendu pour le voir et le télécharger !
+          <p className="font-hero text-[18px] sm:text-[20px] text-foreground mt-4 leading-relaxed px-2">
+            Tu vois le résultat — débloque tout pour le voir en HD et le
+            télécharger ✨
           </p>
         </div>
 
