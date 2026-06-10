@@ -19,7 +19,11 @@ export function PostHogPageView() {
       url += `?${query}`;
     }
 
-    client.capture("$pageview", { $current_url: url, $pathname: pathname });
+    client.capture("$pageview", {
+      $current_url: url,
+      $pathname: pathname,
+      $host: window.location.host,
+    });
 
     const funnelEvent = getFunnelEventForPath(pathname);
     if (funnelEvent) {

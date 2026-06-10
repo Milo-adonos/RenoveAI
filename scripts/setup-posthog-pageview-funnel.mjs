@@ -15,6 +15,8 @@ const PAGEVIEW_FUNNEL_NAME =
 const PAGEVIEW_FUNNEL_DESCRIPTION =
   "Conversion à chaque étape : Landing → Upload photo → Chargement → Choix offre → Signup → Mes créations";
 
+const HOST_FILTER = "renoveai.com";
+
 /** Même structure que le funnel ITO, avec les pages Renove AI */
 const PAGEVIEW_STEPS = [
   { name: "Landing", pathname: "/" },
@@ -31,6 +33,12 @@ function pageviewSeries(steps) {
     event: "$pageview",
     custom_name: name,
     properties: [
+      {
+        key: "$host",
+        value: HOST_FILTER,
+        operator: "icontains",
+        type: "event",
+      },
       {
         key: "$pathname",
         value: pathname,
