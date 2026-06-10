@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "setup:posthog-dashboard": "node scripts/setup-posthog-dashboard.mjs"
   },
   "dependencies": {
     "@stripe/stripe-js": "^4.10.0",
