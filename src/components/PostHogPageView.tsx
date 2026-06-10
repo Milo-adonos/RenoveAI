@@ -23,6 +23,7 @@ export function PostHogPageView() {
       $current_url: url,
       $pathname: pathname,
       $host: window.location.host,
+      app: "renove-ai",
     });
 
     const funnelEvent = getFunnelEventForPath(pathname);

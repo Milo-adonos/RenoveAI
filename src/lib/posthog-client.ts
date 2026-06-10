@@ -21,6 +21,7 @@ export function initPostHog(): typeof posthog | null {
       capture_pageleave: true,
       persistence: "localStorage+cookie",
     });
+    posthog.register({ app: "renove-ai" });
   }
 
   return posthog;

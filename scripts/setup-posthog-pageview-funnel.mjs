@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Crée le funnel Pageview Renove AI (comme le modèle ITO).
+ * Crée / met à jour le funnel Renove AI dans PostHog.
  *
  * Usage:
  *   POSTHOG_PERSONAL_API_KEY=phx_xxx node scripts/setup-posthog-pageview-funnel.mjs
@@ -9,39 +9,32 @@
 const API_HOST = process.env.POSTHOG_API_HOST || "https://eu.posthog.com";
 const API_KEY = process.env.POSTHOG_PERSONAL_API_KEY;
 const DASHBOARD_NAME = "Renove AI — Conversion";
+const APP_FILTER = "renove-ai";
 
 const PAGEVIEW_FUNNEL_NAME =
   "Funnel Renove AI — du Landing à la 1ère création";
 const PAGEVIEW_FUNNEL_DESCRIPTION =
   "Conversion à chaque étape : Landing → Upload photo → Chargement → Choix offre → Signup → Mes créations";
 
-const HOST_FILTER = "renoveai.com";
-
-/** Même structure que le funnel ITO, avec les pages Renove AI */
-const PAGEVIEW_STEPS = [
-  { name: "Landing", pathname: "/" },
-  { name: "Upload photo", pathname: "/upload" },
-  { name: "Chargement", pathname: "/loading" },
-  { name: "Choix offre", pathname: "/pricing" },
-  { name: "Signup", pathname: "/auth/signup" },
-  { name: "Mes créations", pathname: "/dashboard/creations" },
+/** Events funnel explicites (plus fiables que pageview + pathname) */
+const FUNNEL_STEPS = [
+  { name: "Landing", event: "funnel_landing" },
+  { name: "Upload photo", event: "funnel_upload" },
+  { name: "Chargement", event: "funnel_loading" },
+  { name: "Choix offre", event: "funnel_pricing" },
+  { name: "Signup", event: "funnel_signup" },
+  { name: "Mes créations", event: "funnel_creations" },
 ];
 
-function pageviewSeries(steps) {
-  return steps.map(({ name, pathname }) => ({
+function funnelSeries(steps) {
+  return steps.map(({ name, event }) => ({
     kind: "EventsNode",
-    event: "$pageview",
+    event,
     custom_name: name,
     properties: [
       {
-        key: "$host",
-        value: HOST_FILTER,
-        operator: "icontains",
-        type: "event",
-      },
-      {
-        key: "$pathname",
-        value: pathname,
+        key: "app",
+        value: APP_FILTER,
         operator: "exact",
         type: "event",
       },
@@ -114,7 +107,7 @@ async function main() {
       kind: "InsightVizNode",
       source: {
         kind: "FunnelsQuery",
-        series: pageviewSeries(PAGEVIEW_STEPS),
+        series: funnelSeries(FUNNEL_STEPS),
         dateRange: { date_from: "-30d" },
         funnelsFilter: {
           funnelWindowInterval: 7,
@@ -145,8 +138,8 @@ async function main() {
   console.log(`
 ✅ ${PAGEVIEW_FUNNEL_NAME}
 
-Étapes:
-${PAGEVIEW_STEPS.map((s, i) => `  ${i + 1}. ${s.name} → $pageview sur ${s.pathname}`).join("\n")}
+Étapes (events Renove AI filtrés app=renove-ai):
+${FUNNEL_STEPS.map((s, i) => `  ${i + 1}. ${s.name} → ${s.event}`).join("\n")}
 
 Ouvre l'insight:
 ${API_HOST}/project/${projectId}/insights/${insight.short_id || insight.id}

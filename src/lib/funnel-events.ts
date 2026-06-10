@@ -43,6 +43,7 @@ export function captureFunnelEvent(
   if (!client) return;
 
   client.capture(event, {
+    app: "renove-ai",
     funnel_step: true,
     ...properties,
   });
