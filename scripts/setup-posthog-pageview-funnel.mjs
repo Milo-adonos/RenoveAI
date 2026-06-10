@@ -9,7 +9,10 @@
 const API_HOST = process.env.POSTHOG_API_HOST || "https://eu.posthog.com";
 const API_KEY = process.env.POSTHOG_PERSONAL_API_KEY;
 const DASHBOARD_NAME = "Renove AI — Conversion";
-const APP_FILTER = "renove-ai";
+/** Projet Renove AI (pas GoMytho 154997) — clé phc_D5UxUfUF... */
+const RENOVE_API_TOKEN =
+  process.env.NEXT_PUBLIC_POSTHOG_KEY ||
+  "phc_D5UxUfUFqb37rfmz3UQAzq3sH5zyt8YUncRwvkxNfutz";
 
 const PAGEVIEW_FUNNEL_NAME =
   "Funnel Renove AI — du Landing à la 1ère création";
@@ -31,15 +34,25 @@ function funnelSeries(steps) {
     kind: "EventsNode",
     event,
     custom_name: name,
-    properties: [
-      {
-        key: "app",
-        value: APP_FILTER,
-        operator: "exact",
-        type: "event",
-      },
-    ],
   }));
+}
+
+async function getProjectId() {
+  if (process.env.POSTHOG_PROJECT_ID) {
+    return Number(process.env.POSTHOG_PROJECT_ID);
+  }
+
+  const projects = await api("/api/projects/");
+  const list = projects.results || projects;
+  const renove = list.find((p) => p.api_token === RENOVE_API_TOKEN);
+
+  if (!renove) {
+    throw new Error(
+      "Projet Renove AI introuvable. Vérifie NEXT_PUBLIC_POSTHOG_KEY ou POSTHOG_PROJECT_ID=198113"
+    );
+  }
+
+  return renove.id;
 }
 
 async function api(path, options = {}) {
@@ -67,12 +80,6 @@ async function api(path, options = {}) {
   }
 
   return data;
-}
-
-async function getProjectId() {
-  const projects = await api("/api/projects/");
-  const list = projects.results || projects;
-  return (list[0] || {}).id;
 }
 
 async function getDashboardId(projectId) {
@@ -138,7 +145,7 @@ async function main() {
   console.log(`
 ✅ ${PAGEVIEW_FUNNEL_NAME}
 
-Étapes (events Renove AI filtrés app=renove-ai):
+Étapes (projet Renove AI uniquement):
 ${FUNNEL_STEPS.map((s, i) => `  ${i + 1}. ${s.name} → ${s.event}`).join("\n")}
 
 Ouvre l'insight:

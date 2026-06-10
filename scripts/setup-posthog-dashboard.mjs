@@ -10,6 +10,9 @@
 
 const API_HOST = process.env.POSTHOG_API_HOST || "https://eu.posthog.com";
 const API_KEY = process.env.POSTHOG_PERSONAL_API_KEY;
+const RENOVE_API_TOKEN =
+  process.env.NEXT_PUBLIC_POSTHOG_KEY ||
+  "phc_D5UxUfUFqb37rfmz3UQAzq3sH5zyt8YUncRwvkxNfutz";
 
 const DASHBOARD_NAME = "Renove AI — Conversion";
 const DASHBOARD_DESCRIPTION =
@@ -134,6 +137,10 @@ async function api(path, options = {}) {
 }
 
 async function getProjectId() {
+  if (process.env.POSTHOG_PROJECT_ID) {
+    return Number(process.env.POSTHOG_PROJECT_ID);
+  }
+
   const projects = await api("/api/projects/");
   const list = projects.results || projects;
 
@@ -141,15 +148,12 @@ async function getProjectId() {
     throw new Error("Aucun projet PostHog trouvé sur ce compte.");
   }
 
-  if (list.length === 1) return list[0].id;
+  const renove = list.find((p) => p.api_token === RENOVE_API_TOKEN);
+  if (renove) return renove.id;
 
-  const appProject = list.find(
-    (p) =>
-      p.name?.toLowerCase().includes("renove") ||
-      p.name?.toLowerCase().includes("default")
+  throw new Error(
+    "Projet Renove AI introuvable. Vérifie NEXT_PUBLIC_POSTHOG_KEY ou POSTHOG_PROJECT_ID=198113"
   );
-
-  return (appProject || list[0]).id;
 }
 
 async function findExistingDashboard(projectId) {
