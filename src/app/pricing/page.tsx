@@ -214,12 +214,14 @@ export default function PricingPage() {
           }}
         >
           <span
-            className="absolute -top-3 left-4 z-10 rounded-lg px-2.5 py-1 font-bold text-white"
+            className="absolute -top-3 left-4 z-10 rounded-lg font-bold text-white"
             style={{
               backgroundColor: "#A0522D",
               fontFamily: "var(--font-inter), Inter, sans-serif",
-              fontSize: "12px",
-              transform: "rotate(-3deg)",
+              fontSize: "18px",
+              padding: "10px 16px",
+              transform: "rotate(-6deg)",
+              boxShadow: "0 4px 12px rgba(160, 82, 45, 0.4)",
             }}
           >
             -50%
@@ -298,35 +300,49 @@ export default function PricingPage() {
 
         <div className="mt-4 space-y-3 pricing-reveal-item pricing-reveal-delay-5">
           <div
-            className="rounded-xl px-3 py-3.5 text-center"
-            style={{ backgroundColor: "#EDE8E3" }}
+            className="rounded-xl text-center"
+            style={{
+              padding: "16px 20px",
+              border: "1.5px solid #E8E0D8",
+            }}
           >
             <p
+              className="inline-flex items-center justify-center gap-1.5"
               style={{
                 fontFamily: "var(--font-inter), Inter, sans-serif",
-                fontSize: "13px",
+                fontSize: "14px",
                 color: "#1A1A1A",
               }}
             >
-              🛡️ Satisfait ou remboursé — 7 jours
+              <span style={{ fontSize: "18px" }} aria-hidden="true">
+                🛡️
+              </span>
+              Satisfait ou remboursé — 7 jours
             </p>
           </div>
 
           <div
-            className="rounded-xl px-3 py-3.5 text-center"
-            style={{ backgroundColor: "#EDE8E3" }}
+            className="rounded-xl text-center"
+            style={{
+              padding: "16px 20px",
+              border: "1.5px solid #E8E0D8",
+            }}
           >
             <p
               className="inline-flex items-center justify-center gap-2 flex-wrap"
               style={{
                 fontFamily: "var(--font-inter), Inter, sans-serif",
-                fontSize: "13px",
+                fontSize: "14px",
                 color: "#1A1A1A",
               }}
             >
               <span
-                className="pricing-live-dot inline-block h-2 w-2 rounded-full"
-                style={{ backgroundColor: "#4CAF50" }}
+                className="pricing-live-dot inline-block rounded-full"
+                style={{
+                  width: "10px",
+                  height: "10px",
+                  backgroundColor: "#4CAF50",
+                }}
                 aria-hidden="true"
               />
               {formattedUnlockCount} utilisateurs ont débloqué leur rendu
@@ -342,10 +358,10 @@ export default function PricingPage() {
           className="pricing-glow-cta w-full mt-5 text-white font-bold transition-colors disabled:opacity-50 pricing-reveal-item pricing-reveal-delay-6"
           style={{
             fontFamily: "var(--font-inter), Inter, sans-serif",
-            fontSize: "16px",
+            fontSize: "18px",
             backgroundColor: "#A0522D",
             borderRadius: "50px",
-            padding: "18px",
+            padding: "20px",
           }}
         >
           {loading ? "Chargement..." : "Débloquer mon rendu →"}
