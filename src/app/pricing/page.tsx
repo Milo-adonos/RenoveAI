@@ -131,26 +131,28 @@ export default function PricingPage() {
   return (
     <main className="min-h-screen bg-background pb-8">
       <div className="px-5 pt-6 max-w-[390px] mx-auto w-full">
-        <p className="font-hero text-[20px] font-bold text-[#A0522D] text-center">
+        <p className="font-hero text-[20px] font-bold text-[#A0522D] text-center pricing-reveal-item pricing-reveal-delay-1">
           Renove AI
         </p>
 
-        <h1 className="font-hero text-[26px] font-bold text-[#1A1A1A] text-center mt-5">
-          Ton rendu t&apos;attend ✨
-        </h1>
-        <p
-          className="text-center mt-2 mb-6"
-          style={{
-            fontFamily: "var(--font-inter), Inter, sans-serif",
-            fontSize: "13px",
-            color: "#8B7D6B",
-          }}
-        >
-          Annulable à tout moment, sans engagement
-        </p>
+        <div className="pricing-reveal-item pricing-reveal-delay-2">
+          <h1 className="font-hero text-[26px] font-bold text-[#1A1A1A] text-center mt-5">
+            Ton rendu t&apos;attend ✨
+          </h1>
+          <p
+            className="text-center mt-2 mb-6"
+            style={{
+              fontFamily: "var(--font-inter), Inter, sans-serif",
+              fontSize: "13px",
+              color: "#8B7D6B",
+            }}
+          >
+            Annulable à tout moment, sans engagement
+          </p>
+        </div>
 
         <div
-          className="relative flex p-1 mb-5"
+          className="relative flex p-1 mb-5 pricing-reveal-item pricing-reveal-delay-3"
           style={{ backgroundColor: "#EDE8E3", borderRadius: "50px" }}
         >
           <button
@@ -205,7 +207,7 @@ export default function PricingPage() {
         </div>
 
         <div
-          className="relative rounded-2xl bg-white p-5"
+          className="relative rounded-2xl bg-white p-5 pricing-reveal-item pricing-reveal-delay-4"
           style={{
             border: "1px solid #F0EBE5",
             boxShadow: "0 4px 16px rgba(0, 0, 0, 0.08)",
@@ -294,7 +296,7 @@ export default function PricingPage() {
           )}
         </div>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 space-y-3 pricing-reveal-item pricing-reveal-delay-5">
           <div
             className="rounded-xl px-3 py-3.5 text-center"
             style={{ backgroundColor: "#EDE8E3" }}
@@ -337,7 +339,7 @@ export default function PricingPage() {
           type="button"
           onClick={handleUnlock}
           disabled={loading}
-          className="pricing-glow-cta w-full mt-5 text-white font-bold transition-colors disabled:opacity-50"
+          className="pricing-glow-cta w-full mt-5 text-white font-bold transition-colors disabled:opacity-50 pricing-reveal-item pricing-reveal-delay-6"
           style={{
             fontFamily: "var(--font-inter), Inter, sans-serif",
             fontSize: "16px",
@@ -349,7 +351,7 @@ export default function PricingPage() {
           {loading ? "Chargement..." : "Débloquer mon rendu →"}
         </button>
 
-        <div className="mt-5 space-y-2 text-center">
+        <div className="mt-5 space-y-2 text-center pricing-reveal-item pricing-reveal-delay-7">
           <p
             style={{
               fontFamily: "var(--font-inter), Inter, sans-serif",

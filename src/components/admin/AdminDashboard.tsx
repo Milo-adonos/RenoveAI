@@ -173,16 +173,16 @@ export function AdminDashboard() {
               <div className="admin-panel">
                 <div className="admin-kpi-grid">
                   <KpiCard
-                    label="CA TOTAL"
-                    value={formatEuro(stats.estimatedMRR)}
-                    subtext={`+${formatEuro(stats.revenueLast30Days)} ces 30 jours`}
+                    label="CA ENCAISSÉ"
+                    value={formatEuro(stats.actualRevenue)}
+                    subtext={`+${formatEuro(stats.actualRevenue30d)} ces 30 jours · Estimé/mois : ${formatEuro(stats.estimatedMRR)} si personne n'annule`}
                     tone="green"
                     icon={Wallet}
                   />
                   <KpiCard
                     label="BÉNÉFICE NET"
-                    value={formatEuro(stats.estimatedProfit)}
-                    subtext={`Marge : ${stats.marginPercent}%`}
+                    value={formatEuro(stats.actualProfit)}
+                    subtext={`Marge réelle : ${stats.actualMarginPercent}% · Estimé/mois : ${formatEuro(stats.estimatedProfit)} si personne n'annule`}
                     tone="green"
                     icon={TrendingUp}
                   />
@@ -225,7 +225,7 @@ export function AdminDashboard() {
 
                 <div className="admin-charts-grid">
                   <div className="admin-chart-card">
-                    <h2>Revenus quotidiens (30j)</h2>
+                    <h2>Revenus encaissés (30j)</h2>
                     <AdminLineChart data={revenueChartData} />
                   </div>
                   <div className="admin-chart-card">
@@ -305,7 +305,7 @@ export function AdminDashboard() {
                         <th>INSCRIPTION</th>
                         <th>GÉNÉR.</th>
                         <th>COÛT IA</th>
-                        <th>CA</th>
+                        <th>CA ENCAISSÉ</th>
                         <th>NET</th>
                       </tr>
                     </thead>
@@ -395,13 +395,23 @@ export function AdminDashboard() {
 
             {activeTab === "finances" && stats && (
               <div className="admin-panel admin-finance-grid">
+                <div className="admin-finance-card">
+                  <p className="admin-finance-label">CA encaissé</p>
+                  <p className="admin-finance-value">
+                    {formatEuro(stats.actualRevenue)}
+                  </p>
+                  <p className="admin-finance-sub">
+                    +{formatEuro(stats.actualRevenue30d)} ces 30 jours via Stripe
+                  </p>
+                </div>
                 <div className="admin-finance-card admin-finance-card-highlight">
                   <p className="admin-finance-label">CA mensuel estimé</p>
                   <p className="admin-finance-value accent">
                     {formatEuro(stats.estimatedMRR)}
                   </p>
                   <p className="admin-finance-sub">
-                    (monthly × 9,99€) + (weekly × 21,62€/mois)
+                    Si personne n&apos;annule · (monthly × 9,99€) + (weekly ×
+                    21,62€/mois)
                   </p>
                 </div>
                 <div className="admin-finance-card">
@@ -415,12 +425,34 @@ export function AdminDashboard() {
                 </div>
                 <div
                   className={`admin-finance-card ${
+                    stats.actualProfit >= 0
+                      ? "admin-finance-card-positive"
+                      : "admin-finance-card-negative"
+                  }`}
+                >
+                  <p className="admin-finance-label">Bénéfice net réel</p>
+                  <p
+                    className={`admin-finance-value ${
+                      stats.actualProfit >= 0 ? "positive" : "negative"
+                    }`}
+                  >
+                    {formatEuro(stats.actualProfit)}
+                  </p>
+                  <p className="admin-finance-sub">
+                    Marge réelle {stats.actualMarginPercent}% · CA encaissé −
+                    coût IA
+                  </p>
+                </div>
+                <div
+                  className={`admin-finance-card ${
                     stats.estimatedProfit >= 0
                       ? "admin-finance-card-positive"
                       : "admin-finance-card-negative"
                   }`}
                 >
-                  <p className="admin-finance-label">Bénéfice estimé ce mois</p>
+                  <p className="admin-finance-label">
+                    Bénéfice estimé ce mois
+                  </p>
                   <p
                     className={`admin-finance-value ${
                       stats.estimatedProfit >= 0 ? "positive" : "negative"
@@ -429,8 +461,8 @@ export function AdminDashboard() {
                     {formatEuro(stats.estimatedProfit)}
                   </p>
                   <p className="admin-finance-sub">
-                    Marge {stats.marginPercent}% · revenus 30j{" "}
-                    {formatEuro(stats.revenueLast30Days)}
+                    Si personne n&apos;annule · marge estimée{" "}
+                    {stats.estimatedMarginPercent}%
                   </p>
                 </div>
               </div>

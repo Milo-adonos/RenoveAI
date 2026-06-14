@@ -1,20 +1,22 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import {
-  AI_COST_PER_GENERATION,
-  computeUserRevenue,
-} from "@/lib/admin-metrics";
+import { AI_COST_PER_GENERATION } from "@/lib/admin-metrics";
+import { fetchStripeRevenueStats } from "@/lib/stripe-revenue";
 
 export async function GET() {
   try {
     const supabase = await createServiceClient();
 
-    const { data: profiles, error: profilesError } = await supabase
-      .from("profiles")
-      .select(
-        "id, email, full_name, subscription_status, subscription_plan, subscription_end_date, created_at"
-      )
-      .order("created_at", { ascending: false });
+    const [{ data: profiles, error: profilesError }, stripeRevenue] =
+      await Promise.all([
+        supabase
+          .from("profiles")
+          .select(
+            "id, email, full_name, subscription_status, subscription_plan, subscription_end_date, stripe_customer_id, created_at"
+          )
+          .order("created_at", { ascending: false }),
+        fetchStripeRevenueStats(),
+      ]);
 
     if (profilesError) {
       throw profilesError;
@@ -41,10 +43,9 @@ export async function GET() {
       const generationsCount = generationsCountByUser.get(profile.id) ?? 0;
       const aiCost =
         Math.round(generationsCount * AI_COST_PER_GENERATION * 100) / 100;
-      const revenue = computeUserRevenue(
-        profile.subscription_status,
-        profile.subscription_plan
-      );
+      const revenue = profile.stripe_customer_id
+        ? stripeRevenue.revenueByCustomerId[profile.stripe_customer_id] ?? 0
+        : 0;
       const net = Math.round((revenue - aiCost) * 100) / 100;
 
       return {

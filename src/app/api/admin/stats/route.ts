@@ -4,9 +4,9 @@ import {
   AI_COST_PER_GENERATION,
   MONTHLY_PLAN_PRICE,
   WEEKLY_PLAN_MONTHLY_EQUIVALENT,
-  estimateDailyRevenue,
   groupCountByDay,
 } from "@/lib/admin-metrics";
+import { fetchStripeRevenueStats } from "@/lib/stripe-revenue";
 
 export async function GET() {
   try {
@@ -26,6 +26,7 @@ export async function GET() {
       recentGenerationsRes,
       recentProfilesRes,
       canceledRecentRes,
+      stripeRevenue,
     ] = await Promise.all([
       supabase.from("generations").select("*", { count: "exact", head: true }),
       supabase.from("profiles").select("*", { count: "exact", head: true }),
@@ -64,6 +65,7 @@ export async function GET() {
         .select("subscription_end_date")
         .eq("subscription_status", "canceled")
         .gte("subscription_end_date", thirtyDaysAgoIso),
+      fetchStripeRevenueStats(),
     ]);
 
     const totalGenerations = generationsRes.count ?? 0;
@@ -73,6 +75,9 @@ export async function GET() {
       monthlySubscribers * MONTHLY_PLAN_PRICE +
       weeklySubscribers * WEEKLY_PLAN_MONTHLY_EQUIVALENT;
     const estimatedAICost = totalGenerations * AI_COST_PER_GENERATION;
+    const actualRevenue = stripeRevenue.actualRevenue;
+    const actualRevenue30d = stripeRevenue.actualRevenue30d;
+    const actualProfit = actualRevenue - estimatedAICost;
     const estimatedProfit = estimatedMRR - estimatedAICost;
     const newUsers30d = recentProfilesRes.data?.length ?? 0;
     const canceledLast30d = canceledRecentRes.data?.length ?? 0;
@@ -81,16 +86,15 @@ export async function GET() {
       totalUsers > 0
         ? Math.round((canceledLast30d / totalUsers) * 1000) / 10
         : 0;
-    const marginPercent =
+    const actualMarginPercent =
+      actualRevenue > 0
+        ? Math.round((actualProfit / actualRevenue) * 1000) / 10
+        : 0;
+    const estimatedMarginPercent =
       estimatedMRR > 0
         ? Math.round((estimatedProfit / estimatedMRR) * 1000) / 10
         : 0;
     const dailyGenerations = groupCountByDay(recentGenerationsRes.data ?? []);
-    const dailyRevenue = estimateDailyRevenue(dailyGenerations, estimatedMRR);
-    const revenueLast30Days = dailyRevenue.reduce(
-      (sum, day) => sum + day.amount,
-      0
-    );
 
     return NextResponse.json({
       totalGenerations,
@@ -100,16 +104,19 @@ export async function GET() {
       canceledSubscribers: canceledRes.count ?? 0,
       weeklySubscribers,
       monthlySubscribers,
+      actualRevenue: Math.round(actualRevenue * 100) / 100,
+      actualRevenue30d: Math.round(actualRevenue30d * 100) / 100,
       estimatedMRR: Math.round(estimatedMRR * 100) / 100,
       estimatedAICost: Math.round(estimatedAICost * 100) / 100,
+      actualProfit: Math.round(actualProfit * 100) / 100,
       estimatedProfit: Math.round(estimatedProfit * 100) / 100,
-      revenueLast30Days: Math.round(revenueLast30Days * 100) / 100,
+      actualMarginPercent,
+      estimatedMarginPercent,
       newUsers30d,
       canceledLast30d,
       churnRate30d,
-      marginPercent,
       dailyGenerations,
-      dailyRevenue,
+      dailyRevenue: stripeRevenue.dailyRevenue,
       lastUpdated: new Date().toISOString(),
     });
   } catch (error) {

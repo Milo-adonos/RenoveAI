@@ -115,6 +115,8 @@ const MESSAGE_INTERVAL_MS = 6_000;
 const TIP_INTERVAL_MS = 6_000;
 const TIP_FADE_MS = 500;
 const FINISH_TRANSITION_MS = 300;
+const BAR_FINISH_MS = 400;
+const FADE_OUT_MS = 500;
 
 function getProgressFromElapsed(elapsedMs: number): number {
   return Math.min(100, (elapsedMs / FAKE_LOADING_MS) * 100);
@@ -136,6 +138,7 @@ export default function LoadingPage() {
   const [tipIndex, setTipIndex] = useState(0);
   const [tipVisible, setTipVisible] = useState(true);
   const [finishing, setFinishing] = useState(false);
+  const [exiting, setExiting] = useState(false);
 
   useEffect(() => {
     const checkout = getCheckoutSession();
@@ -162,8 +165,12 @@ export default function LoadingPage() {
         setProgress(100);
 
         setTimeout(() => {
-          router.push("/pricing");
-        }, FINISH_TRANSITION_MS);
+          setExiting(true);
+
+          setTimeout(() => {
+            router.push("/pricing");
+          }, FADE_OUT_MS);
+        }, BAR_FINISH_MS);
       }
     }, TICK_MS);
 
@@ -184,7 +191,11 @@ export default function LoadingPage() {
   }, []);
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4">
+    <main
+      className={`min-h-screen flex flex-col items-center justify-center px-4 loading-page-transition${
+        exiting ? " loading-page-exit" : ""
+      }`}
+    >
       <span
         className="logo-loading font-hero font-bold text-[44px] text-accent mb-10 text-center"
         style={{
