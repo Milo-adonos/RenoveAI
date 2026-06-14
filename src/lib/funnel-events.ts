@@ -1,6 +1,6 @@
 import type { PostHog } from "posthog-js";
 
-/** Événements funnel — à utiliser dans PostHog → Insights → Funnel */
+/** Événements funnel — parcours : Landing → Signup → Upload → Loading → Pricing → Paiement → Créations */
 export const FUNNEL = {
   landing: "funnel_landing",
   upload: "funnel_upload",

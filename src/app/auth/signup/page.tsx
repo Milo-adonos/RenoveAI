@@ -1,14 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getCheckoutSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/client";
 
+function getSelectedPlanFromCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(/(?:^|; )selectedPlan=([^;]*)/);
+  const plan = match?.[1];
+  if (plan === "weekly" || plan === "monthly") return plan;
+  return null;
+}
+
+function getStripeCheckoutUrl(plan: string): string {
+  return `/api/stripe/checkout?plan=${plan}`;
+}
+
 function getPostSignupRedirect(): string {
   if (getCheckoutSession()) {
     const selectedPlan = localStorage.getItem("selectedPlan") || "monthly";
-    return `/api/stripe/checkout?plan=${selectedPlan}`;
+    return getStripeCheckoutUrl(selectedPlan);
   }
   return "/upload";
 }
@@ -17,7 +29,29 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function redirectIfAlreadySignedIn() {
+      const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session) {
+        const plan = getSelectedPlanFromCookie();
+        if (plan) {
+          window.location.href = getStripeCheckoutUrl(plan);
+          return;
+        }
+      }
+
+      setCheckingSession(false);
+    }
+
+    redirectIfAlreadySignedIn();
+  }, []);
 
   async function handleEmailSignup(e: React.FormEvent) {
     e.preventDefault();
@@ -47,6 +81,19 @@ export default function SignupPage() {
         redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
+  }
+
+  if (checkingSession) {
+    return (
+      <main className="min-h-screen bg-background flex items-center justify-center">
+        <p
+          className="text-muted"
+          style={{ fontFamily: "var(--font-inter), Inter, sans-serif" }}
+        >
+          Chargement...
+        </p>
+      </main>
+    );
   }
 
   return (

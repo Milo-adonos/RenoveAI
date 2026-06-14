@@ -10,6 +10,7 @@ import {
 } from "@/lib/pricing-timer";
 import { FUNNEL } from "@/lib/funnel-events";
 import { useFunnelCapture } from "@/hooks/useFunnelCapture";
+import { createClient } from "@/lib/supabase/client";
 
 const UNLOCK_COUNT_KEY = "renove_pricing_unlock_count";
 const UNLOCK_RESET_HOUR = 15;
@@ -121,10 +122,22 @@ export default function PricingPage() {
     return formatUnlockCount(unlockCount);
   }, [unlockCount]);
 
-  function handleUnlock() {
+  async function handleUnlock() {
+    captureFunnel(FUNNEL.unlockClicked, { plan: selectedPlan });
     captureFunnel(FUNNEL.planSelected, { plan: selectedPlan });
     setLoading(true);
     setSelectedPlan(selectedPlan);
+
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session) {
+      window.location.href = `/api/stripe/checkout?plan=${selectedPlan}`;
+      return;
+    }
+
     router.push("/auth/signup");
   }
 

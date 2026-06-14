@@ -17,15 +17,15 @@ const RENOVE_API_TOKEN =
 const PAGEVIEW_FUNNEL_NAME =
   "Funnel Renove AI — du Landing à la 1ère création";
 const PAGEVIEW_FUNNEL_DESCRIPTION =
-  "Conversion à chaque étape : Landing → Upload photo → Chargement → Choix offre → Signup → Mes créations";
+  "Conversion à chaque étape : Landing → Signup → Upload photo → Chargement → Choix offre → Mes créations";
 
 /** Events funnel explicites (plus fiables que pageview + pathname) */
 const FUNNEL_STEPS = [
   { name: "Landing", event: "funnel_landing" },
+  { name: "Signup", event: "funnel_signup" },
   { name: "Upload photo", event: "funnel_upload" },
   { name: "Chargement", event: "funnel_loading" },
   { name: "Choix offre", event: "funnel_pricing" },
-  { name: "Signup", event: "funnel_signup" },
   { name: "Mes créations", event: "funnel_creations" },
 ];
 

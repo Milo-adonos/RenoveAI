@@ -16,33 +16,35 @@ const RENOVE_API_TOKEN =
 
 const DASHBOARD_NAME = "Renove AI — Conversion";
 const DASHBOARD_DESCRIPTION =
-  "Funnel de conversion Renove AI — landing → upload → génération → preview → paiement";
+  "Funnel de conversion Renove AI — landing → signup → upload → loading → pricing → paiement";
 
 const MAIN_FUNNEL = [
   ["funnel_landing", "Landing"],
+  ["funnel_signup", "Signup"],
   ["funnel_upload", "Upload"],
   ["funnel_generation_started", "Génération lancée"],
   ["funnel_loading", "Loading"],
-  ["funnel_generation_completed", "Génération OK"],
-  ["funnel_preview", "Preview"],
-  ["funnel_unlock_clicked", "Clic débloquer"],
   ["funnel_pricing", "Pricing"],
+  ["funnel_unlock_clicked", "Clic débloquer"],
   ["funnel_plan_selected", "Plan choisi"],
-  ["funnel_signup", "Signup"],
   ["funnel_payment_completed", "Paiement"],
+  ["funnel_creations", "Mes créations"],
 ];
 
 const PAYWALL_FUNNEL = [
-  ["funnel_preview", "Preview"],
-  ["funnel_unlock_clicked", "Clic débloquer"],
   ["funnel_pricing", "Pricing"],
+  ["funnel_unlock_clicked", "Clic débloquer"],
   ["funnel_plan_selected", "Plan choisi"],
+  ["funnel_signup", "Signup checkout"],
   ["funnel_payment_completed", "Paiement"],
 ];
 
 const GENERATION_FUNNEL = [
-  ["funnel_generation_started", "Lancée"],
-  ["funnel_generation_completed", "Réussie"],
+  ["funnel_generation_started", "Photo envoyée"],
+  ["funnel_loading", "Loading"],
+  ["funnel_pricing", "Pricing"],
+  ["funnel_payment_completed", "Paiement"],
+  ["funnel_creations", "Création affichée"],
 ];
 
 function funnelSeries(steps) {
@@ -215,19 +217,19 @@ async function main() {
   const insights = [
     funnelInsight(
       "Funnel conversion complet",
-      "Parcours complet landing → paiement (7 jours)",
+      "Parcours landing → signup → upload → pricing → paiement (7 jours)",
       MAIN_FUNNEL,
       dashboardId
     ),
     funnelInsight(
-      "Taux de réussite génération",
-      "Générations lancées vs réussies",
+      "Taux de conversion génération → paiement",
+      "Upload → loading → pricing → paiement → création",
       GENERATION_FUNNEL,
       dashboardId
     ),
     funnelInsight(
       "Funnel paywall → paiement",
-      "Preview → déblocage → pricing → paiement",
+      "Pricing → déblocage → signup checkout → paiement",
       PAYWALL_FUNNEL,
       dashboardId
     ),

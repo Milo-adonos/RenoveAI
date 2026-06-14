@@ -41,9 +41,13 @@ export async function GET(request: Request) {
     await supabase.auth.exchangeCodeForSession(code);
   }
 
-  const response = NextResponse.redirect(
-    new URL("/auth/go-to-stripe", origin)
-  );
+  const selectedPlan = cookieStore.get("selectedPlan")?.value;
+  const redirectPath =
+    selectedPlan === "weekly" || selectedPlan === "monthly"
+      ? `/api/stripe/checkout?plan=${selectedPlan}`
+      : "/upload";
+
+  const response = NextResponse.redirect(new URL(redirectPath, origin));
 
   pendingCookies.forEach(({ name, value, options }) => {
     response.cookies.set(name, value, options);
