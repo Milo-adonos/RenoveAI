@@ -44,7 +44,7 @@ export default function LoginPage() {
       }
     }
 
-    window.location.href = "/pricing";
+    window.location.href = "/upload";
   }
 
   async function handleGoogleLogin() {

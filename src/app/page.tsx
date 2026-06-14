@@ -10,7 +10,7 @@ import { beforeAfterExamples } from "@/lib/styles";
 export default function LandingPage() {
   return (
     <main className="min-h-screen overflow-x-hidden">
-      <Header landing />
+      <Header landing showLogin={false} />
 
       {/* Hero */}
       <section className="px-5 pt-4 pb-0 max-w-2xl mx-auto text-center">
@@ -43,7 +43,7 @@ export default function LandingPage() {
           Prends une photo, choisis un style et l&apos;IA redesigne ta pièce en
           30 secondes.
         </p>
-        <Link href="/upload" className="btn-primary block w-full">
+        <Link href="/auth/signup" className="btn-primary block w-full">
           Rénover ma pièce →
         </Link>
       </section>
@@ -121,7 +121,7 @@ export default function LandingPage() {
         <h2 className="font-display text-2xl sm:text-3xl font-bold mb-6">
           Alors, on rénove ?
         </h2>
-        <Link href="/upload" className="btn-primary block w-full">
+        <Link href="/auth/signup" className="btn-primary block w-full">
           Rénover ma pièce →
         </Link>
         <div className="mt-8">
