@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { activateSubscriptionFromSession } from "@/lib/activate-subscription";
-import { syncSubscriptionToProfile } from "@/lib/subscription-sync";
+import { syncSubscriptionToProfile, resolveUserIdFromSubscription, getSubscriptionPeriodEnd } from "@/lib/subscription-sync";
 import { createServiceClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -53,12 +53,20 @@ export async function POST(request: NextRequest) {
 
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
-        const userId = subscription.metadata?.supabase_user_id;
+        const userId = await resolveUserIdFromSubscription(
+          supabase,
+          subscription
+        );
 
         if (userId) {
           await supabase
             .from("profiles")
-            .update({ subscription_status: "canceled" })
+            .update({
+              subscription_status: "canceled",
+              subscription_end_date:
+                getSubscriptionPeriodEnd(subscription) ??
+                new Date().toISOString(),
+            })
             .eq("id", userId);
         }
         break;
