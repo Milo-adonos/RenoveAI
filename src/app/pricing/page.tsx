@@ -300,36 +300,38 @@ export default function PricingPage() {
 
         <div className="mt-4 space-y-3 pricing-reveal-item pricing-reveal-delay-5">
           <div
-            className="rounded-xl text-center"
             style={{
-              padding: "16px 20px",
-              border: "1.5px solid #E8E0D8",
+              backgroundColor: "#F0E6DE",
+              borderRadius: "12px",
+              padding: "14px 20px",
             }}
           >
-            <p
-              className="inline-flex items-center justify-center gap-1.5"
-              style={{
-                fontFamily: "var(--font-inter), Inter, sans-serif",
-                fontSize: "14px",
-                color: "#1A1A1A",
-              }}
-            >
+            <div className="flex items-center justify-center gap-2">
               <span style={{ fontSize: "18px" }} aria-hidden="true">
                 🛡️
               </span>
-              Satisfait ou remboursé — 7 jours
-            </p>
+              <span
+                style={{
+                  fontFamily: "var(--font-inter), Inter, sans-serif",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  color: "#A0522D",
+                }}
+              >
+                Satisfait ou remboursé&nbsp;&nbsp;7 jours
+              </span>
+            </div>
           </div>
 
           <div
-            className="rounded-xl text-center"
             style={{
-              padding: "16px 20px",
-              border: "1.5px solid #E8E0D8",
+              backgroundColor: "#F0E6DE",
+              borderRadius: "12px",
+              padding: "14px 20px",
             }}
           >
             <p
-              className="inline-flex items-center justify-center gap-2 flex-wrap"
+              className="flex items-center justify-center gap-2 flex-wrap"
               style={{
                 fontFamily: "var(--font-inter), Inter, sans-serif",
                 fontSize: "14px",
@@ -337,16 +339,20 @@ export default function PricingPage() {
               }}
             >
               <span
-                className="pricing-live-dot inline-block rounded-full"
+                className="pricing-live-dot inline-block flex-shrink-0 rounded-full"
                 style={{
-                  width: "10px",
-                  height: "10px",
+                  width: "8px",
+                  height: "8px",
                   backgroundColor: "#4CAF50",
                 }}
                 aria-hidden="true"
               />
-              {formattedUnlockCount} utilisateurs ont débloqué leur rendu
-              aujourd&apos;hui
+              <span>
+                <span style={{ fontWeight: 700, color: "#A0522D" }}>
+                  {formattedUnlockCount}
+                </span>{" "}
+                utilisateurs ont débloqué leur rendu aujourd&apos;hui
+              </span>
             </p>
           </div>
         </div>
