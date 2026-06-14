@@ -5,14 +5,20 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { Generation } from "@/types/database";
 import { isBypassAuthEnabled, getDevBypassUser } from "@/lib/dev-bypass";
 import { addDevCreation } from "@/lib/dev-creations";
 import { getNextMonday, WEEKLY_LIMIT } from "@/lib/weekly-generations";
+import {
+  clearCheckoutSession,
+  getCheckoutSession,
+  getGeneration,
+} from "@/lib/session";
 
 import { resolveGenerationResponse } from "@/lib/poll-generation";
 const DEV_WEEKLY_KEY = "renove_dev_weekly_used";
@@ -36,12 +42,21 @@ type DashboardContextValue = {
   pendingGeneration: PendingGeneration | null;
   optimisticGeneration: Generation | null;
   successToast: boolean;
+  generatingToast: boolean;
   dismissToast: () => void;
   refreshCreations: number;
   startGeneration: (input: GenerationInput) => Promise<string | null>;
 };
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
+
+function GeneratingToast({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-accent text-white px-6 py-3 rounded-2xl shadow-lg">
+      ✨ Ton rendu est en cours de création...
+    </div>
+  );
+}
 
 function SuccessToast({ onDismiss }: { onDismiss: () => void }) {
   useEffect(() => {
@@ -76,14 +91,20 @@ function incrementDevWeeklyUsed(): void {
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [pendingGeneration, setPendingGeneration] =
     useState<PendingGeneration | null>(null);
   const [optimisticGeneration, setOptimisticGeneration] =
     useState<Generation | null>(null);
   const [successToast, setSuccessToast] = useState(false);
+  const [generatingToast, setGeneratingToast] = useState(false);
   const [refreshCreations, setRefreshCreations] = useState(0);
+  const postCheckoutStartedRef = useRef(false);
 
-  const dismissToast = useCallback(() => setSuccessToast(false), []);
+  const dismissToast = useCallback(() => {
+    setSuccessToast(false);
+    setGeneratingToast(false);
+  }, []);
 
   const startGeneration = useCallback(
     async (input: GenerationInput): Promise<string | null> => {
@@ -108,6 +129,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           originalUrl: input.originalUrl,
           aspectRatio,
         });
+        setGeneratingToast(true);
         router.push("/dashboard/creations");
 
         try {
@@ -141,11 +163,13 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           }
 
           setPendingGeneration(null);
+          setGeneratingToast(false);
           setRefreshCreations((n) => n + 1);
           setSuccessToast(true);
           return null;
         } catch (err) {
           setPendingGeneration(null);
+          setGeneratingToast(false);
           return err instanceof Error ? err.message : "Erreur de génération";
         }
       }
@@ -168,6 +192,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         originalUrl: input.originalUrl,
         aspectRatio,
       });
+      setGeneratingToast(true);
       router.push("/dashboard/creations");
 
       try {
@@ -190,6 +215,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         );
 
         setPendingGeneration(null);
+        setGeneratingToast(false);
         setOptimisticGeneration({
           id: `optimistic-${Date.now()}`,
           user_id: "pending",
@@ -230,11 +256,39 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         return null;
       } catch (err) {
         setPendingGeneration(null);
+        setGeneratingToast(false);
         return err instanceof Error ? err.message : "Erreur de génération";
       }
     },
     [router]
   );
+
+  useEffect(() => {
+    if (postCheckoutStartedRef.current) return;
+    if (searchParams.get("success") !== "true") return;
+
+    const checkout = getCheckoutSession();
+    if (!checkout) return;
+
+    postCheckoutStartedRef.current = true;
+
+    const session = getGeneration();
+    const style =
+      checkout.selectedStyle === "custom"
+        ? session?.style
+        : checkout.selectedStyle;
+
+    clearCheckoutSession();
+
+    void startGeneration({
+      originalUrl: checkout.originalImageUrl,
+      originalPath: session?.originalPath,
+      originalWidth: session?.originalWidth ?? 1600,
+      originalHeight: session?.originalHeight ?? 1200,
+      style: style || undefined,
+      customPrompt: session?.customPrompt,
+    });
+  }, [searchParams, startGeneration]);
 
   return (
     <DashboardContext.Provider
@@ -242,12 +296,16 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         pendingGeneration,
         optimisticGeneration,
         successToast,
+        generatingToast,
         dismissToast,
         refreshCreations,
         startGeneration,
       }}
     >
       {children}
+      {generatingToast && !successToast && (
+        <GeneratingToast onDismiss={dismissToast} />
+      )}
       {successToast && <SuccessToast onDismiss={dismissToast} />}
     </DashboardContext.Provider>
   );

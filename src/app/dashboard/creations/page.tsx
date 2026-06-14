@@ -5,12 +5,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { getGeneration, clearGeneration } from "@/lib/session";
 import type { Generation } from "@/types/database";
 import { getStyleLabel } from "@/lib/styles";
 import { useDashboard } from "@/contexts/DashboardContext";
 import { isBypassAuthEnabled } from "@/lib/dev-bypass";
-import { addDevCreation, getDevCreations } from "@/lib/dev-creations";
+import { getDevCreations } from "@/lib/dev-creations";
 import { downloadGenerationImage } from "@/lib/download-image";
 
 function useAspectRatio(url: string): number {
@@ -110,7 +109,7 @@ function PendingCard({ aspectRatio }: { aspectRatio: number }) {
         style={{ aspectRatio }}
       >
         <p className="text-accent font-medium text-sm px-4 text-center">
-          En cours de génération...
+          ✨ Ton rendu est en cours de création...
         </p>
       </div>
     </div>
@@ -127,16 +126,6 @@ export default function CreationsPage() {
   useEffect(() => {
     async function load() {
       if (isBypassAuthEnabled()) {
-        const session = getGeneration();
-        if (session?.generatedUrl && session?.originalUrl) {
-          addDevCreation({
-            original_image_url: session.originalUrl,
-            generated_image_url: session.generatedUrl,
-            style: session.style || null,
-            custom_prompt: session.customPrompt || null,
-          });
-          clearGeneration();
-        }
         setGenerations(getDevCreations());
         setLoading(false);
         return;
@@ -150,22 +139,6 @@ export default function CreationsPage() {
       if (!user) {
         setLoading(false);
         return;
-      }
-
-      const session = getGeneration();
-      if (session?.generatedUrl && session?.originalUrl) {
-        await fetch("/api/generations/save", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            originalUrl: session.originalUrl,
-            generatedUrl: session.generatedUrl,
-            style: session.style,
-            customPrompt: session.customPrompt,
-            originalPath: session.originalPath,
-          }),
-        });
-        clearGeneration();
       }
 
       const { data } = await supabase

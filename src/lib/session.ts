@@ -12,6 +12,15 @@ export interface GenerationSession {
 const SESSION_KEY = "renove_generation";
 const PLAN_KEY = "selectedPlan";
 const PREVIEW_SEEN_KEY = "renove_preview_seen";
+const SELECTED_STYLE_KEY = "selectedStyle";
+const ORIGINAL_IMAGE_URL_KEY = "originalImageUrl";
+const ROOM_TYPE_KEY = "roomType";
+
+export interface CheckoutSession {
+  selectedStyle: string;
+  originalImageUrl: string;
+  roomType: string | null;
+}
 
 export function saveGeneration(data: Partial<GenerationSession>) {
   if (typeof window === "undefined") return;
@@ -43,6 +52,48 @@ export function getGeneration(): GenerationSession | null {
 export function clearGeneration() {
   if (typeof window === "undefined") return;
   sessionStorage.removeItem(SESSION_KEY);
+}
+
+export function saveCheckoutSession(data: {
+  selectedStyle?: string | null;
+  originalImageUrl: string;
+  roomType?: string | null;
+}) {
+  if (typeof window === "undefined") return;
+
+  sessionStorage.setItem(
+    SELECTED_STYLE_KEY,
+    data.selectedStyle?.trim() ? data.selectedStyle : "custom"
+  );
+  sessionStorage.setItem(ORIGINAL_IMAGE_URL_KEY, data.originalImageUrl);
+
+  if (data.roomType) {
+    sessionStorage.setItem(ROOM_TYPE_KEY, data.roomType);
+  } else {
+    sessionStorage.removeItem(ROOM_TYPE_KEY);
+  }
+}
+
+export function getCheckoutSession(): CheckoutSession | null {
+  if (typeof window === "undefined") return null;
+
+  const originalImageUrl = sessionStorage.getItem(ORIGINAL_IMAGE_URL_KEY);
+  const selectedStyle = sessionStorage.getItem(SELECTED_STYLE_KEY);
+
+  if (!originalImageUrl || !selectedStyle) return null;
+
+  return {
+    selectedStyle,
+    originalImageUrl,
+    roomType: sessionStorage.getItem(ROOM_TYPE_KEY),
+  };
+}
+
+export function clearCheckoutSession() {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(SELECTED_STYLE_KEY);
+  sessionStorage.removeItem(ORIGINAL_IMAGE_URL_KEY);
+  sessionStorage.removeItem(ROOM_TYPE_KEY);
 }
 
 export type SubscriptionPlan = "weekly" | "monthly" | "annual";

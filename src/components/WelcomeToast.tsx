@@ -32,7 +32,7 @@ export function WelcomeToast() {
 
   return (
     <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-accent text-white px-6 py-3 rounded-2xl shadow-lg animate-fade-in">
-      ✨ Ton rendu est prêt !
+      ✨ Abonnement activé !
     </div>
   );
 }

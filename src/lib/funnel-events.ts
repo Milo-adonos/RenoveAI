@@ -23,7 +23,6 @@ const PATH_TO_FUNNEL: Record<string, string> = {
   "/": FUNNEL.landing,
   "/upload": FUNNEL.upload,
   "/loading": FUNNEL.loading,
-  "/preview": FUNNEL.preview,
   "/pricing": FUNNEL.pricing,
   "/auth/signup": FUNNEL.signup,
   "/auth/login": FUNNEL.login,

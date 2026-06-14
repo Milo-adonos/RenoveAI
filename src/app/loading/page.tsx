@@ -1,15 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  GENERATION_MAX_MS,
-  GENERATION_POLL_INTERVAL_MS,
-  GENERATION_TYPICAL_MS,
-} from "@/lib/generation-config";
-import { getGeneration, saveGeneration } from "@/lib/session";
-import { FUNNEL } from "@/lib/funnel-events";
-import { useFunnelCapture } from "@/hooks/useFunnelCapture";
+  getCheckoutSession,
+  getGeneration,
+} from "@/lib/session";
 
 const STATUS_MESSAGES = [
   "Analyse de ta pièce en cours...",
@@ -113,37 +109,15 @@ const tips = [
   },
 ];
 
-const POLL_INTERVAL_MS = GENERATION_POLL_INTERVAL_MS;
+const FAKE_LOADING_MS = 10_000;
 const TICK_MS = 100;
-const MAX_GENERATION_MS = GENERATION_MAX_MS;
-const PATIENCE_AFTER_MS = 25_000;
-const ERROR_MESSAGE_AFTER_MS = 40_000;
 const MESSAGE_INTERVAL_MS = 6_000;
 const TIP_INTERVAL_MS = 6_000;
 const TIP_FADE_MS = 500;
 const FINISH_TRANSITION_MS = 300;
 
-const FRIENDLY_ERROR =
-  "Notre IA est très sollicitée en ce moment.\nVeux-tu réessayer ?";
-
 function getProgressFromElapsed(elapsedMs: number): number {
-  const t = elapsedMs / 1000;
-  const typicalSec = GENERATION_TYPICAL_MS / 1000;
-
-  if (t <= typicalSec * 0.4) {
-    return (t / (typicalSec * 0.4)) * 50;
-  }
-
-  if (t <= typicalSec) {
-    return 50 + ((t - typicalSec * 0.4) / (typicalSec * 0.6)) * 35;
-  }
-
-  const pulseMs = 2000;
-  const phase = ((elapsedMs - GENERATION_TYPICAL_MS) % (pulseMs * 2)) / pulseMs;
-  if (phase <= 1) {
-    return 86 + phase * 5;
-  }
-  return 91 - (phase - 1) * 5;
+  return Math.min(100, (elapsedMs / FAKE_LOADING_MS) * 100);
 }
 
 function getMessageIndex(elapsedMs: number): number {
@@ -154,93 +128,47 @@ function getMessageIndex(elapsedMs: number): number {
 
 export default function LoadingPage() {
   const router = useRouter();
-  const captureFunnel = useFunnelCapture();
   const startTimeRef = useRef(Date.now());
   const doneRef = useRef(false);
-  const abortRef = useRef(false);
-  const failTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [progress, setProgress] = useState(0);
   const [messageIndex, setMessageIndex] = useState(0);
   const [tipIndex, setTipIndex] = useState(0);
   const [tipVisible, setTipVisible] = useState(true);
-  const [showPatience, setShowPatience] = useState(false);
-  const [hasFailed, setHasFailed] = useState(false);
   const [finishing, setFinishing] = useState(false);
 
-  const showFailure = useCallback(() => {
-    if (doneRef.current) return;
-    doneRef.current = true;
-    captureFunnel(FUNNEL.generationFailed, {
-      elapsed_ms: Date.now() - startTimeRef.current,
-    });
-    setHasFailed(true);
-  }, [captureFunnel]);
-
-  const fail = useCallback(
-    (detail?: string) => {
-      if (abortRef.current) return;
-      abortRef.current = true;
-      if (detail) console.error("[loading]", detail);
-
-      const elapsed = Date.now() - startTimeRef.current;
-      const delay = Math.max(0, ERROR_MESSAGE_AFTER_MS - elapsed);
-
-      if (failTimeoutRef.current) {
-        clearTimeout(failTimeoutRef.current);
-      }
-      failTimeoutRef.current = setTimeout(showFailure, delay);
-    },
-    [showFailure]
-  );
-
   useEffect(() => {
-    return () => {
-      if (failTimeoutRef.current) {
-        clearTimeout(failTimeoutRef.current);
-      }
-    };
-  }, []);
+    const checkout = getCheckoutSession();
+    const session = getGeneration();
 
-  const complete = useCallback(
-    (generatedUrl: string) => {
-      if (doneRef.current) return;
-      doneRef.current = true;
-      abortRef.current = true;
-      if (failTimeoutRef.current) {
-        clearTimeout(failTimeoutRef.current);
-        failTimeoutRef.current = null;
-      }
-      setFinishing(true);
-      setProgress(100);
-      captureFunnel(FUNNEL.generationCompleted, {
-        elapsed_ms: Date.now() - startTimeRef.current,
-      });
-
-      setTimeout(() => {
-        saveGeneration({ generatedUrl });
-        router.push("/preview");
-      }, FINISH_TRANSITION_MS);
-    },
-    [router, captureFunnel]
-  );
+    if (!checkout?.originalImageUrl && !session?.originalUrl) {
+      router.push("/upload");
+    }
+  }, [router]);
 
   useEffect(() => {
     const tick = setInterval(() => {
       if (doneRef.current) return;
 
       const elapsed = Date.now() - startTimeRef.current;
+      const nextProgress = getProgressFromElapsed(elapsed);
 
-      setProgress(getProgressFromElapsed(elapsed));
+      setProgress(nextProgress);
       setMessageIndex(getMessageIndex(elapsed));
 
-      if (!showPatience && elapsed >= PATIENCE_AFTER_MS) {
-        setShowPatience(true);
+      if (elapsed >= FAKE_LOADING_MS) {
+        doneRef.current = true;
+        setFinishing(true);
+        setProgress(100);
+
+        setTimeout(() => {
+          router.push("/pricing");
+        }, FINISH_TRANSITION_MS);
       }
     }, TICK_MS);
 
     return () => clearInterval(tick);
-  }, [showPatience]);
+  }, [router]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -254,101 +182,6 @@ export default function LoadingPage() {
 
     return () => clearInterval(interval);
   }, []);
-
-  useEffect(() => {
-    async function generate() {
-      const session = getGeneration();
-
-      if (!session?.originalUrl) {
-        router.push("/upload");
-        return;
-      }
-
-      const timeoutId = setTimeout(() => {
-        fail("La génération a pris trop de temps. Réessayez.");
-      }, MAX_GENERATION_MS);
-
-      try {
-        const res = await fetch("/api/generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            imageUrl: session.originalUrl,
-            style: session.style,
-            customPrompt: session.customPrompt,
-          }),
-        });
-
-        const data = await res.json();
-
-        if (abortRef.current) return;
-
-        if (!res.ok) {
-          fail(data.error || data.hint || "Impossible de lancer la génération");
-          return;
-        }
-
-        if (data.generatedUrl) {
-          clearTimeout(timeoutId);
-          complete(data.generatedUrl as string);
-          return;
-        }
-
-        const { taskId } = data as { taskId: string };
-        let pollIndex = 0;
-
-        while (!abortRef.current) {
-          const statusRes = await fetch(
-            `/api/generate/status?taskId=${taskId}&poll=${pollIndex}`
-          );
-          const statusData = await statusRes.json();
-
-          if (abortRef.current) return;
-
-          if (!statusRes.ok) {
-            fail(
-              statusData.error ||
-                "La génération a échoué côté serveur IA"
-            );
-            return;
-          }
-
-          if (statusData.state === "fail") {
-            fail(statusData.error || "La génération IA a échoué");
-            return;
-          }
-
-          if (typeof statusData.progress === "number") {
-            setProgress((prev) => Math.max(prev, statusData.progress));
-          }
-
-          if (
-            statusData.state === "success" &&
-            statusData.generatedUrl
-          ) {
-            clearTimeout(timeoutId);
-            complete(statusData.generatedUrl);
-            return;
-          }
-
-          pollIndex += 1;
-          await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-        }
-      } catch (err) {
-        if (!abortRef.current) {
-          fail(
-            err instanceof Error
-              ? err.message
-              : "Erreur réseau pendant la génération"
-          );
-        }
-      } finally {
-        clearTimeout(timeoutId);
-      }
-    }
-
-    generate();
-  }, [router, fail, complete]);
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-4">
@@ -377,56 +210,31 @@ export default function LoadingPage() {
           />
         </div>
 
-        {showPatience && !hasFailed && (
-          <p className="text-center text-sm italic text-accent mb-4 animate-fade-in">
-            Notre IA travaille sur les moindres détails de ton rendu — la qualité
-            vaut l&apos;attente 🎨
+        <p className="text-center text-lg font-medium mb-2 min-h-[3.5rem] flex items-center justify-center">
+          {STATUS_MESSAGES[messageIndex]}
+        </p>
+
+        <div className="flex justify-center gap-1 mt-4">
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="w-2 h-2 bg-accent rounded-full animate-bounce"
+              style={{ animationDelay: `${i * 0.15}s` }}
+            />
+          ))}
+        </div>
+
+        <div
+          className="mt-8 bg-white rounded-2xl p-4 shadow-sm transition-opacity duration-500"
+          style={{ opacity: tipVisible ? 1 : 0 }}
+        >
+          <p className="text-sm font-semibold text-foreground mb-2">
+            {tips[tipIndex].title}
           </p>
-        )}
-
-        {!hasFailed && (
-          <p className="text-center text-lg font-medium mb-2 min-h-[3.5rem] flex items-center justify-center">
-            {STATUS_MESSAGES[messageIndex]}
+          <p className="text-sm text-[#8B7E74] leading-relaxed">
+            {tips[tipIndex].text}
           </p>
-        )}
-
-        {hasFailed ? (
-          <div className="text-center mt-4">
-            <p className="text-lg font-medium text-foreground whitespace-pre-line leading-relaxed">
-              {FRIENDLY_ERROR}
-            </p>
-            <button
-              onClick={() => router.push("/upload")}
-              className="mt-6 inline-flex items-center gap-1 text-accent hover:text-accent-hover font-semibold text-base transition-colors"
-            >
-              Réessayer →
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="flex justify-center gap-1 mt-4">
-              {[0, 1, 2].map((i) => (
-                <span
-                  key={i}
-                  className="w-2 h-2 bg-accent rounded-full animate-bounce"
-                  style={{ animationDelay: `${i * 0.15}s` }}
-                />
-              ))}
-            </div>
-
-            <div
-              className="mt-8 bg-white rounded-2xl p-4 shadow-sm transition-opacity duration-500"
-              style={{ opacity: tipVisible ? 1 : 0 }}
-            >
-              <p className="text-sm font-semibold text-foreground mb-2">
-                {tips[tipIndex].title}
-              </p>
-              <p className="text-sm text-[#8B7E74] leading-relaxed">
-                {tips[tipIndex].text}
-              </p>
-            </div>
-          </>
-        )}
+        </div>
       </div>
     </main>
   );
