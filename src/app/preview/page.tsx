@@ -3,13 +3,44 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Logo } from "@/components/Logo";
+import { Lock } from "lucide-react";
 import { getGeneration } from "@/lib/session";
+import { getStyleLabel } from "@/lib/styles";
 import { FUNNEL } from "@/lib/funnel-events";
 import { useFunnelCapture } from "@/hooks/useFunnelCapture";
 import { createClient } from "@/lib/supabase/client";
 
-const BLUR_PX = 6;
+const BLUR_PX = 9;
+
+const ROOM_TYPE_LABELS: Record<string, string> = {
+  bedroom: "Chambre",
+  living_room: "Salon",
+  kitchen: "Cuisine",
+  bathroom: "Salle de bain",
+  garden_exterior: "Jardin",
+  facade: "Façade",
+  office: "Bureau",
+  other: "Pièce",
+};
+
+function getRoomTypeLabel(roomType: string): string {
+  return ROOM_TYPE_LABELS[roomType] || roomType;
+}
+
+function buildMicroInfo(): string | null {
+  const selectedStyle = sessionStorage.getItem("selectedStyle");
+  const roomType = sessionStorage.getItem("roomType");
+  const styleKey = selectedStyle || getGeneration()?.style;
+  const styleLabel = getStyleLabel(styleKey);
+
+  if (!styleLabel) return null;
+
+  if (roomType) {
+    return `Style : ${styleLabel} • ${getRoomTypeLabel(roomType)}`;
+  }
+
+  return `Style : ${styleLabel}`;
+}
 
 const antiScreenshotStyle: CSSProperties = {
   userSelect: "none",
@@ -38,6 +69,7 @@ export default function PreviewPage() {
   const captureFunnel = useFunnelCapture();
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [aspectRatio, setAspectRatio] = useState<number>(4 / 3);
+  const [microInfo, setMicroInfo] = useState<string | null>(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -50,6 +82,7 @@ export default function PreviewPage() {
       }
 
       setGeneratedUrl(session.generatedUrl);
+      setMicroInfo(buildMicroInfo());
 
       if (session.originalWidth && session.originalHeight) {
         setAspectRatio(session.originalWidth / session.originalHeight);
@@ -99,14 +132,23 @@ export default function PreviewPage() {
       onContextMenu={(e) => e.preventDefault()}
       style={{ userSelect: "none", WebkitUserSelect: "none" }}
     >
-      <header className="px-5 pt-6 max-w-lg mx-auto w-full">
-        <Logo />
-      </header>
-
-      <div className="px-5 max-w-lg mx-auto w-full">
+      <div className="px-5 pt-6 max-w-[390px] mx-auto w-full">
         <h1 className="font-hero text-2xl sm:text-3xl font-bold text-[#1A1A1A] text-center pb-3">
-          Ta pièce a été redesignée
+          Voilà ce que ça donne 👀
         </h1>
+
+        {microInfo && (
+          <p
+            className="text-center pb-4"
+            style={{
+              fontFamily: "var(--font-inter), Inter, sans-serif",
+              fontSize: "13px",
+              color: "#8B7D6B",
+            }}
+          >
+            {microInfo}
+          </p>
+        )}
 
         <div
           className="relative w-full rounded-2xl shadow-card overflow-hidden"
@@ -141,9 +183,10 @@ export default function PreviewPage() {
             <Link
               href="/pricing"
               onClick={() => vibrateOnClick(captureFunnel)}
-              className="absolute top-1/2 left-1/2 z-10 animate-preview-pulse bg-[#A0522D] hover:bg-accent-hover text-white font-bold text-sm sm:text-base px-5 py-3 rounded-2xl shadow-lg transition-colors text-center whitespace-nowrap"
+              className="absolute top-1/2 left-1/2 z-10 animate-preview-pulse bg-[#A0522D] hover:bg-accent-hover text-white font-bold text-sm sm:text-base px-5 py-3 rounded-2xl shadow-lg transition-colors text-center whitespace-nowrap inline-flex items-center gap-2"
             >
-              🔒 Débloque le rendu complet
+              <Lock className="w-4 h-4 shrink-0" aria-hidden="true" />
+              Débloque le rendu complet
             </Link>
           </div>
         </div>
