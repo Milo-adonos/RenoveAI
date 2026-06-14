@@ -56,7 +56,7 @@
   }
 
   .animate-preview-scroll-vertical {
-    animation: preview-scroll-vertical 60s linear infinite;
+    animation: preview-scroll-vertical 40s linear infinite;
   }
 }
 
