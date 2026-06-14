@@ -46,18 +46,18 @@ export function OwnerAccess() {
           color: "#C4B8AC",
         }}
       >
-        Propriétaire de Renove AI
+        Vous êtes le propriétaire du site ?
       </button>
 
       {open && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-5"
-          style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.4)" }}
           onClick={closeModal}
           role="presentation"
         >
           <div
-            className="relative w-full max-w-[340px] rounded-2xl bg-white p-6 shadow-card"
+            className="relative w-full max-w-[320px] rounded-2xl bg-white p-7 shadow-card"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -74,10 +74,20 @@ export function OwnerAccess() {
 
             <h2
               id="owner-access-title"
-              className="font-hero text-lg font-bold text-foreground text-center mb-5"
+              className="font-hero text-[20px] font-bold text-[#1A1A1A] text-center"
             >
               Accès propriétaire
             </h2>
+            <p
+              className="text-center mt-1 mb-6"
+              style={{
+                fontFamily: "var(--font-inter), Inter, sans-serif",
+                fontSize: "12px",
+                color: "#8B7D6B",
+              }}
+            >
+              Renove AI
+            </p>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <input
@@ -89,15 +99,19 @@ export function OwnerAccess() {
                 }}
                 placeholder="Code d'accès"
                 autoComplete="off"
-                className="w-full text-center border border-muted/30 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                className="w-full rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30"
+                style={{ border: "1px solid #E8E0D8" }}
               />
 
               {error && (
-                <p className="text-center text-sm text-[#C0392B]">Code incorrect</p>
+                <p className="text-center text-sm text-[#C62828]">Code incorrect</p>
               )}
 
-              <button type="submit" className="btn-primary">
-                Entrer
+              <button
+                type="submit"
+                className="w-full rounded-2xl bg-[#A0522D] hover:bg-accent-hover text-white font-semibold py-3 px-6 transition-colors text-center"
+              >
+                Entrer →
               </button>
             </form>
           </div>
