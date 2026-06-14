@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Lock } from "lucide-react";
+import { PreviewSocialProof } from "@/components/PreviewSocialProof";
 import { getGeneration } from "@/lib/session";
 import { getStyleLabel } from "@/lib/styles";
 import { FUNNEL } from "@/lib/funnel-events";
@@ -133,6 +134,10 @@ export default function PreviewPage() {
       style={{ userSelect: "none", WebkitUserSelect: "none" }}
     >
       <div className="px-5 pt-6 max-w-[390px] mx-auto w-full">
+        <p className="font-hero text-[20px] font-bold text-[#A0522D] text-center pb-4">
+          Renove AI
+        </p>
+
         <h1 className="font-hero text-2xl sm:text-3xl font-bold text-[#1A1A1A] text-center pb-3">
           Voilà ce que ça donne 👀
         </h1>
@@ -190,6 +195,8 @@ export default function PreviewPage() {
             </Link>
           </div>
         </div>
+
+        <PreviewSocialProof />
       </div>
     </main>
   );

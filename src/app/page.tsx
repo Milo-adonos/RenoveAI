@@ -4,6 +4,7 @@ import { LiveCounter } from "@/components/LiveCounter";
 import { BeforeAfterCarousel } from "@/components/BeforeAfterCarousel";
 import { FAQ } from "@/components/FAQ";
 import { SupportContact } from "@/components/SupportContact";
+import { OwnerAccess } from "@/components/OwnerAccess";
 import { beforeAfterExamples } from "@/lib/styles";
 
 export default function LandingPage() {
@@ -140,6 +141,7 @@ export default function LandingPage() {
           <span>Contact</span>
         </div>
         <p className="mt-4">© 2026 Renove AI — renoveai.com</p>
+        <OwnerAccess />
       </footer>
     </main>
   );

@@ -37,6 +37,31 @@
   .btn-preview-cta {
     box-shadow: 0 8px 24px rgba(160, 82, 45, 0.35);
   }
+
+  .preview-marquee-mask {
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 8%,
+      black 92%,
+      transparent
+    );
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 8%,
+      black 92%,
+      transparent
+    );
+  }
+
+  .animate-preview-scroll-left {
+    animation: preview-scroll-left linear infinite;
+  }
+
+  .animate-preview-scroll-right {
+    animation: preview-scroll-right linear infinite;
+  }
 }
 
 @keyframes preview-pulse {
@@ -48,6 +73,24 @@
   }
   100% {
     transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes preview-scroll-left {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes preview-scroll-right {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
   }
 }
 
