@@ -1,127 +1,161 @@
-const SOCIAL_PROOF_LINES = [
-  {
-    names: [
-      "Emma",
-      "Lucas",
-      "Inès",
-      "Noah",
-      "Camille",
-      "Théo",
-      "Léa",
-      "Yanis",
-      "Chloé",
-      "Axel",
-    ],
-    direction: "left" as const,
-    duration: 18,
-  },
-  {
-    names: [
-      "Sarah",
-      "Rayan",
-      "Jade",
-      "Tom",
-      "Manon",
-      "Enzo",
-      "Lucie",
-      "Adam",
-      "Zoé",
-      "Noa",
-    ],
-    direction: "right" as const,
-    duration: 22,
-  },
-  {
-    names: [
-      "Lina",
-      "Hugo",
-      "Eva",
-      "Antoine",
-      "Mia",
-      "Baptiste",
-      "Clara",
-      "Karim",
-      "Amélie",
-      "Julien",
-    ],
-    direction: "left" as const,
-    duration: 16,
-  },
-  {
-    names: [
-      "Nora",
-      "Maxime",
-      "Sofia",
-      "Ethan",
-      "Alice",
-      "Raphaël",
-      "Lena",
-      "Nathan",
-      "Océane",
-      "Louis",
-    ],
-    direction: "right" as const,
-    duration: 24,
-  },
+const NOTIFICATION_NAMES = [
+  "Emma",
+  "Lucas",
+  "Inès",
+  "Noah",
+  "Camille",
+  "Théo",
+  "Léa",
+  "Yanis",
+  "Chloé",
+  "Axel",
+  "Sarah",
+  "Rayan",
+  "Jade",
+  "Tom",
+  "Manon",
+  "Enzo",
+  "Lucie",
+  "Adam",
+  "Zoé",
+  "Noa",
+  "Lina",
+  "Hugo",
+  "Eva",
+  "Antoine",
+  "Mia",
+  "Baptiste",
+  "Clara",
+  "Karim",
+  "Amélie",
+  "Julien",
+  "Nora",
+  "Maxime",
+  "Sofia",
+  "Ethan",
+  "Alice",
+  "Raphaël",
+  "Lena",
+  "Nathan",
+  "Océane",
+  "Louis",
+  "Yasmine",
+  "Quentin",
+  "Laura",
+  "Mehdi",
+  "Pauline",
+  "Alexis",
+  "Fatou",
+  "Clément",
+  "Julie",
+  "Samy",
+  "Marion",
+  "Mathis",
+  "Anaïs",
+  "Tristan",
+  "Elisa",
+  "Romain",
+  "Ambre",
+  "Dylan",
+  "Margot",
+  "Kevin",
+  "Céline",
+  "Kylian",
+  "Nina",
+  "Pierre",
+  "Salma",
+  "Florian",
+  "Emilie",
+  "Sacha",
+  "Noémie",
+  "Victor",
+  "Assia",
+  "Guillaume",
+  "Pauline",
+  "Ilyes",
+  "Cindy",
+  "Mathieu",
+  "Alicia",
+  "Adrien",
+  "Naomi",
+  "Thibault",
+  "Justine",
+  "Damien",
+  "Louna",
+  "Simon",
+  "Khady",
+  "Nicolas",
+  "Oriane",
+  "Timothée",
+  "Sirine",
+  "Malo",
+  "Cassandra",
+  "Eliott",
+  "Dina",
+  "Rémi",
+  "Lola",
+  "Ayoub",
+  "Elisa",
+  "Corentin",
+  "Maëva",
 ];
 
-function SocialProofBadge({ name }: { name: string }) {
+function NotificationCard({ name }: { name: string }) {
   return (
-    <span
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-[20px] bg-white px-[14px] py-2 shadow-soft whitespace-nowrap"
-      style={{
-        fontFamily: "var(--font-inter), Inter, sans-serif",
-        fontSize: "12px",
-        color: "#1A1A1A",
-      }}
+    <div
+      className="flex w-[260px] shrink-0 items-center rounded-[12px] bg-white px-[14px] py-[10px]"
+      style={{ boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)" }}
     >
-      <span className="text-[#A0522D]">✦</span>
-      {name} vient de débloquer son rendu
-    </span>
-  );
-}
-
-function SocialProofLine({
-  names,
-  direction,
-  duration,
-}: {
-  names: string[];
-  direction: "left" | "right";
-  duration: number;
-}) {
-  const badges = names.flatMap((name, index) => [
-    <SocialProofBadge key={`${name}-a-${index}`} name={name} />,
-    <SocialProofBadge key={`${name}-b-${index}`} name={name} />,
-  ]);
-
-  return (
-    <div className="preview-marquee-mask overflow-hidden">
-      <div
-        className={`flex w-max gap-2 ${
-          direction === "left"
-            ? "animate-preview-scroll-left"
-            : "animate-preview-scroll-right"
-        }`}
-        style={{ animationDuration: `${duration}s` }}
-      >
-        {badges}
+      <img
+        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`}
+        alt=""
+        width={36}
+        height={36}
+        className="h-9 w-9 shrink-0 rounded-full bg-[#F5F0EA]"
+        draggable={false}
+      />
+      <div className="ml-2 min-w-0">
+        <p
+          className="font-bold leading-tight"
+          style={{
+            fontFamily: "var(--font-inter), Inter, sans-serif",
+            fontSize: "13px",
+            color: "#1A1A1A",
+          }}
+        >
+          {name}
+        </p>
+        <p
+          className="leading-tight mt-0.5"
+          style={{
+            fontFamily: "var(--font-inter), Inter, sans-serif",
+            fontSize: "12px",
+            color: "#8B7D6B",
+          }}
+        >
+          vient de débloquer son rendu ✦
+        </p>
       </div>
     </div>
   );
 }
 
 export function PreviewSocialProof() {
+  const notifications = NOTIFICATION_NAMES.map((name, index) => (
+    <NotificationCard key={`notification-${index}`} name={name} />
+  ));
+
   return (
-    <div className="mt-5 space-y-2" aria-hidden="true">
-      {SOCIAL_PROOF_LINES.map((line) => (
-        <SocialProofLine
-          key={line.duration + line.direction}
-          names={line.names}
-          direction={line.direction}
-          duration={line.duration}
-        />
-      ))}
+    <div
+      className="mt-5 mx-auto preview-notifications-mask overflow-hidden h-[280px] w-full flex justify-center"
+      aria-hidden="true"
+    >
+      <div className="animate-preview-scroll-vertical flex w-[260px] flex-col gap-2">
+        {notifications}
+        {NOTIFICATION_NAMES.map((name, index) => (
+          <NotificationCard key={`notification-dup-${index}`} name={name} />
+        ))}
+      </div>
     </div>
   );
 }

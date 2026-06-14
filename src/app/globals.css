@@ -38,29 +38,25 @@
     box-shadow: 0 8px 24px rgba(160, 82, 45, 0.35);
   }
 
-  .preview-marquee-mask {
+  .preview-notifications-mask {
     mask-image: linear-gradient(
-      to right,
-      transparent,
-      black 8%,
-      black 92%,
-      transparent
+      to bottom,
+      rgba(245, 240, 234, 0),
+      black 12%,
+      black 88%,
+      rgba(245, 240, 234, 0)
     );
     -webkit-mask-image: linear-gradient(
-      to right,
-      transparent,
-      black 8%,
-      black 92%,
-      transparent
+      to bottom,
+      rgba(245, 240, 234, 0),
+      black 12%,
+      black 88%,
+      rgba(245, 240, 234, 0)
     );
   }
 
-  .animate-preview-scroll-left {
-    animation: preview-scroll-left linear infinite;
-  }
-
-  .animate-preview-scroll-right {
-    animation: preview-scroll-right linear infinite;
+  .animate-preview-scroll-vertical {
+    animation: preview-scroll-vertical 60s linear infinite;
   }
 }
 
@@ -76,21 +72,12 @@
   }
 }
 
-@keyframes preview-scroll-left {
+@keyframes preview-scroll-vertical {
   from {
-    transform: translateX(0);
+    transform: translateY(0);
   }
   to {
-    transform: translateX(-50%);
-  }
-}
-
-@keyframes preview-scroll-right {
-  from {
-    transform: translateX(-50%);
-  }
-  to {
-    transform: translateX(0);
+    transform: translateY(-50%);
   }
 }
 
