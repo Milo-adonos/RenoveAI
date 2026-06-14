@@ -146,6 +146,22 @@
   animation: glowPulse 2s ease-in-out infinite;
 }
 
+@keyframes pricingLivePulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.85);
+  }
+}
+
+.pricing-live-dot {
+  animation: pricingLivePulse 1.5s ease-in-out infinite;
+}
+
 /* Admin dashboard */
 .admin-app {
   min-height: 100vh;

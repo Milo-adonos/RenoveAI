@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Header } from "@/components/Header";
 import type { SubscriptionPlan } from "@/lib/session";
 import {
   formatPricingTimer,
@@ -11,39 +10,24 @@ import {
 } from "@/lib/pricing-timer";
 import { FUNNEL } from "@/lib/funnel-events";
 import { useFunnelCapture } from "@/hooks/useFunnelCapture";
+
+const UNLOCK_COUNT_KEY = "renove_pricing_unlock_count";
+const UNLOCK_RESET_HOUR = 15;
+
 const monthlyFeatures = [
   "Générations illimitées",
   "Téléchargement HD",
-  "18 styles disponibles",
-  "Historique complet de toutes tes créations",
-  "Accès en priorité aux nouveaux styles",
-  "Support client prioritaire",
-  "Annulable à tout moment",
+  "19 styles disponibles",
+  "Historique complet",
+  "Support prioritaire",
 ];
 
 const weeklyFeatures = [
-  "20 générations par semaine (pas illimité)",
+  "20 générations par semaine",
   "Téléchargement HD",
-  "18 styles disponibles",
+  "19 styles disponibles",
   "Historique limité à 7 jours",
-  "Support standard",
 ];
-
-const avoids = [
-  "Des heures sur Pinterest sans résultat concret",
-  "Acheter des meubles qui vont pas ensemble",
-  "Payer un décorateur à 150€+ la consultation",
-  "Regretter tes choix après avoir tout acheté",
-  "Vivre dans une pièce qui te ressemble pas",
-];
-
-function StarIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="#A0522D" aria-hidden>
-      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-    </svg>
-  );
-}
 
 function FeatureList({ items }: { items: string[] }) {
   return (
@@ -61,16 +45,62 @@ function FeatureList({ items }: { items: string[] }) {
   );
 }
 
+function getDailyUnlockCount(): number {
+  const now = new Date();
+  const resetToday = new Date(now);
+  resetToday.setHours(UNLOCK_RESET_HOUR, 0, 0, 0);
+
+  let periodStart = resetToday.getTime();
+  if (now.getTime() < periodStart) {
+    periodStart -= 24 * 60 * 60 * 1000;
+  }
+
+  const stored = localStorage.getItem(UNLOCK_COUNT_KEY);
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored) as {
+        periodStart: number;
+        count: number;
+      };
+      if (parsed.periodStart === periodStart && parsed.count >= 847) {
+        return parsed.count;
+      }
+    } catch {
+      // ignore invalid storage
+    }
+  }
+
+  const count = Math.floor(Math.random() * (1243 - 847 + 1)) + 847;
+  localStorage.setItem(
+    UNLOCK_COUNT_KEY,
+    JSON.stringify({ periodStart, count })
+  );
+  return count;
+}
+
+function formatUnlockCount(count: number): string {
+  return new Intl.NumberFormat("fr-FR").format(count);
+}
+
+function setSelectedPlan(plan: SubscriptionPlan) {
+  localStorage.setItem("selectedPlan", plan);
+  document.cookie = `selectedPlan=${plan}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+}
+
 export default function PricingPage() {
   const router = useRouter();
   const captureFunnel = useFunnelCapture();
-  const [loadingPlan, setLoadingPlan] = useState<SubscriptionPlan | null>(null);
+  const [selectedPlan, setSelectedPlanState] = useState<SubscriptionPlan>("monthly");
+  const [loading, setLoading] = useState(false);
   const [timerEnd, setTimerEnd] = useState<number | null>(null);
   const [remainingMs, setRemainingMs] = useState(0);
+  const [unlockCount, setUnlockCount] = useState<number | null>(null);
+
   useEffect(() => {
     const end = getPricingTimerEnd();
     setTimerEnd(end);
     setRemainingMs(end - Date.now());
+    setUnlockCount(getDailyUnlockCount());
   }, []);
 
   useEffect(() => {
@@ -84,218 +114,269 @@ export default function PricingPage() {
   }, [timerEnd]);
 
   const expired = isPricingTimerExpired(remainingMs);
+  const isMonthly = selectedPlan === "monthly";
 
-  function handlePlanSelect(plan: "monthly" | "weekly") {
-    captureFunnel(FUNNEL.planSelected, { plan });
-    setLoadingPlan(plan);
-    localStorage.setItem("selectedPlan", plan);
+  const formattedUnlockCount = useMemo(() => {
+    if (unlockCount === null) return "…";
+    return formatUnlockCount(unlockCount);
+  }, [unlockCount]);
+
+  function handleUnlock() {
+    captureFunnel(FUNNEL.planSelected, { plan: selectedPlan });
+    setLoading(true);
+    setSelectedPlan(selectedPlan);
     router.push("/auth/signup");
   }
 
   return (
-    <main className="min-h-screen pb-8">
-      <Header showLogin={false} />
+    <main className="min-h-screen bg-background pb-8">
+      <div className="px-5 pt-6 max-w-[390px] mx-auto w-full">
+        <p className="font-hero text-[20px] font-bold text-[#A0522D] text-center">
+          Renove AI
+        </p>
 
-      <div className="px-4 max-w-lg mx-auto">
-        {/* 1. Titre + sous-titre */}
-        <h1 className="font-hero text-3xl sm:text-4xl font-bold text-center mb-2 text-foreground">
+        <h1 className="font-hero text-[26px] font-bold text-[#1A1A1A] text-center mt-5">
           Ton rendu t&apos;attend ✨
         </h1>
-        <p className="text-muted text-center mb-8">
-          Transforme ta pièce en 30 secondes
-        </p>
-
-        {/* 2. Ce que tu évites */}
-        <section className="mb-4">
-          <h2 className="font-hero text-lg sm:text-xl font-bold text-center mb-6 text-foreground leading-snug px-1">
-            Ce que tu{" "}
-            <span className="text-accent relative inline-block">
-              évites
-              <svg
-                className="absolute -bottom-1 left-0 w-full h-3 text-accent"
-                viewBox="0 0 120 12"
-                fill="none"
-                preserveAspectRatio="none"
-                aria-hidden="true"
-              >
-                <path
-                  d="M2 8C20 2 40 10 60 6C80 2 100 10 118 4"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </span>{" "}
-            avec <span className="whitespace-nowrap">Renove AI</span>
-          </h2>
-          <ul className="space-y-3">
-            {avoids.map((item) => (
-              <li
-                key={item}
-                className="flex items-start gap-3 text-sm sm:text-base text-foreground"
-              >
-                <span className="text-accent flex-shrink-0">✦</span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        {/* 3. Accroche prix */}
-        <p className="text-accent font-bold text-center mb-8">
-          Tout ça pour moins de 33 centimes par jour.
-        </p>
-
-        {/* 4. Plan mensuel */}
-        <div
-          className="card border-2 border-accent mb-4"
-          style={{ boxShadow: "0 8px 32px rgba(160, 82, 45, 0.2)" }}
+        <p
+          className="text-center mt-2 mb-6"
+          style={{
+            fontFamily: "var(--font-inter), Inter, sans-serif",
+            fontSize: "13px",
+            color: "#8B7D6B",
+          }}
         >
-          <span
-            className="inline-block text-white text-xs font-semibold px-3 py-1 rounded-full"
+          Annulable à tout moment, sans engagement
+        </p>
+
+        <div
+          className="relative flex p-1 mb-5"
+          style={{ backgroundColor: "#EDE8E3", borderRadius: "50px" }}
+        >
+          <button
+            type="button"
+            onClick={() => setSelectedPlanState("weekly")}
+            className="relative flex-1 rounded-[50px] py-2.5 text-sm transition-all"
             style={{
-              background: "#A0522D",
-              boxShadow: "0 2px 8px rgba(160, 82, 45, 0.3)",
+              fontFamily: "var(--font-inter), Inter, sans-serif",
+              fontWeight: selectedPlan === "weekly" ? 700 : 500,
+              color: selectedPlan === "weekly" ? "#1A1A1A" : "#8B7D6B",
+              backgroundColor:
+                selectedPlan === "weekly" ? "#FFFFFF" : "transparent",
+              boxShadow:
+                selectedPlan === "weekly"
+                  ? "0 2px 8px rgba(0, 0, 0, 0.06)"
+                  : "none",
             }}
           >
-            ⭐ LE PLUS POPULAIRE
-          </span>
-          <p className="text-muted text-sm italic mt-4">
-            Un décorateur coûte 150€/consultation.
-          </p>
-          <p className="text-muted text-sm italic">Toi tu payes...</p>
-          <span className="inline-block mt-4 bg-accent/10 text-accent text-xs font-semibold px-3 py-1 rounded-full">
-            🔥 Offre de lancement — prix limité
-          </span>
-          <div className="mt-3 flex items-center gap-2 flex-wrap">
-            <span className="text-muted line-through text-lg">19,99€</span>
+            Hebdo
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedPlanState("monthly")}
+            className="relative flex-1 rounded-[50px] py-2.5 text-sm transition-all"
+            style={{
+              fontFamily: "var(--font-inter), Inter, sans-serif",
+              fontWeight: selectedPlan === "monthly" ? 700 : 500,
+              color: selectedPlan === "monthly" ? "#1A1A1A" : "#8B7D6B",
+              backgroundColor:
+                selectedPlan === "monthly" ? "#FFFFFF" : "transparent",
+              boxShadow:
+                selectedPlan === "monthly"
+                  ? "0 2px 8px rgba(0, 0, 0, 0.06)"
+                  : "none",
+            }}
+          >
+            Mensuel
             <span
-              className="bg-accent text-white font-bold rounded-full"
-              style={{ fontSize: 14, padding: "4px 10px" }}
+              className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-2 py-0.5"
+              style={{
+                fontFamily: "var(--font-inter), Inter, sans-serif",
+                fontSize: "10px",
+                fontWeight: 700,
+                color: "#2E7D32",
+                backgroundColor: "#E8F5E9",
+              }}
             >
-              -50%
+              PLUS ÉCONOMIQUE
             </span>
-          </div>
-          <div className="mt-1">
-            <span className="font-hero text-4xl font-bold text-accent">
-              9,99€
-            </span>
-            <span className="text-muted text-base">/mois</span>
-          </div>
-          <FeatureList items={monthlyFeatures} />
-          <button
-            type="button"
-            onClick={() => handlePlanSelect("monthly")}
-            disabled={loadingPlan !== null}
-            className="pricing-glow-cta w-full bg-accent hover:bg-accent-hover text-white font-bold text-base py-4 px-6 rounded-2xl transition-colors mt-6 disabled:opacity-50"
-          >
-            {loadingPlan === "monthly"
-              ? "Chargement..."
-              : "Choisir le mensuel →"}
           </button>
         </div>
 
-        {/* 5. Plan hebdomadaire */}
-        <div className="card opacity-85 mb-4">
-          <span className="inline-block bg-orange-100 text-orange-700 text-xs font-semibold px-3 py-1 rounded-full">
-            ⚠️ MOINS ÉCONOMIQUE
+        <div
+          className="relative rounded-2xl bg-white p-5"
+          style={{
+            border: "1px solid #F0EBE5",
+            boxShadow: "0 4px 16px rgba(0, 0, 0, 0.08)",
+          }}
+        >
+          <span
+            className="absolute -top-3 left-4 z-10 rounded-lg px-2.5 py-1 font-bold text-white"
+            style={{
+              backgroundColor: "#A0522D",
+              fontFamily: "var(--font-inter), Inter, sans-serif",
+              fontSize: "12px",
+              transform: "rotate(-3deg)",
+            }}
+          >
+            -50%
           </span>
-          <div className="mt-4 flex items-baseline gap-1">
-            <span className="text-3xl font-bold text-foreground">4,99€</span>
-            <span className="text-muted text-sm">/semaine</span>
-          </div>
-          <FeatureList items={weeklyFeatures} />
-          <p className="text-[#C0392B] font-bold text-sm mt-3">
-            ✦ soit 21,62€/mois
-          </p>
-          <button
-            type="button"
-            onClick={() => handlePlanSelect("weekly")}
-            disabled={loadingPlan !== null}
-            className="w-full border-2 border-accent text-accent hover:bg-accent hover:text-white font-bold text-base py-4 px-6 rounded-2xl transition-colors mt-6 disabled:opacity-50"
-          >
-            {loadingPlan === "weekly"
-              ? "Chargement..."
-              : "Choisir l'hebdomadaire →"}
-          </button>
-        </div>
 
-        {/* 6. Préférence mensuel */}
-        <p className="text-center text-muted text-sm italic mb-8 whitespace-nowrap">
-          Le mensuel est 4x moins cher sur la durée
-        </p>
-
-        {/* 7. Timer */}
-        <div className="text-center mb-8">
-          {expired ? (
-            <p className="text-[#C0392B] font-semibold text-base">
-              ⚠️ Offre expirée — prix standard : 14,99€/mois
-            </p>
+          {isMonthly ? (
+            <>
+              <div className="mt-2 flex flex-wrap items-baseline gap-2">
+                <span
+                  className="line-through"
+                  style={{
+                    fontFamily: "var(--font-inter), Inter, sans-serif",
+                    fontSize: "14px",
+                    color: "#8B7D6B",
+                  }}
+                >
+                  19,99€
+                </span>
+                <span className="font-hero text-[38px] font-bold text-[#1A1A1A] leading-none">
+                  9,99€
+                </span>
+                <span
+                  style={{
+                    fontFamily: "var(--font-inter), Inter, sans-serif",
+                    fontSize: "14px",
+                    color: "#8B7D6B",
+                  }}
+                >
+                  /mois
+                </span>
+              </div>
+              <div className="my-4 h-px bg-[#F0EBE5]" />
+              <FeatureList items={monthlyFeatures} />
+            </>
           ) : (
-            <p className="text-foreground font-medium text-base">
-              ⏳ Cette offre expire dans{" "}
-              <span className="font-bold text-accent tabular-nums">
-                {formatPricingTimer(remainingMs)}
-              </span>
-            </p>
+            <>
+              <div className="mt-2 flex flex-wrap items-baseline gap-2">
+                <span
+                  className="line-through"
+                  style={{
+                    fontFamily: "var(--font-inter), Inter, sans-serif",
+                    fontSize: "14px",
+                    color: "#8B7D6B",
+                  }}
+                >
+                  9,99€
+                </span>
+                <span className="font-hero text-[38px] font-bold text-[#1A1A1A] leading-none">
+                  4,99€
+                </span>
+                <span
+                  style={{
+                    fontFamily: "var(--font-inter), Inter, sans-serif",
+                    fontSize: "14px",
+                    color: "#8B7D6B",
+                  }}
+                >
+                  /semaine
+                </span>
+              </div>
+              <p
+                className="mt-2 font-bold"
+                style={{
+                  fontFamily: "var(--font-inter), Inter, sans-serif",
+                  fontSize: "12px",
+                  color: "#C0392B",
+                }}
+              >
+                soit 21,62€/mois
+              </p>
+              <div className="my-4 h-px bg-[#F0EBE5]" />
+              <FeatureList items={weeklyFeatures} />
+            </>
           )}
         </div>
 
-        {/* 8. Garantie */}
-        <section
-          className="rounded-2xl p-6 mb-6 text-center"
-          style={{ backgroundColor: "#FDF0E8" }}
-        >
-          <p className="text-2xl mb-3">🛡️</p>
-          <h3 className="font-hero text-xl font-bold text-foreground mb-4">
-            Notre promesse béton
-          </h3>
-          <p className="text-base text-foreground leading-relaxed text-left px-4">
-            Si dans les 7 jours tu n&apos;es pas bluffé par ton rendu, on te
-            rembourse intégralement. Sans question. Sans délai. Tu gardes même tes
-            créations.
-          </p>
-          <p className="text-accent italic mt-4 text-sm text-left px-4">
-            C&apos;est nous qui prenons le risque, pas toi.
-          </p>
-        </section>
-
-        {/* 9. Comparaison */}
-        <section className="bg-white rounded-2xl p-5 mb-4 text-left">
-          <p className="text-base text-[#1A1A1A] leading-relaxed">
-            Un décorateur d&apos;intérieur coûte entre 150€ et 500€ la
-            consultation. Renove AI te donne accès à une IA entraînée sur des
-            milliers d&apos;intérieurs pour moins de 33 centimes par jour.
-          </p>
-          <p className="text-accent font-bold mt-4 text-base leading-snug text-balance">
-            C&apos;est le prix d&apos;un café ☕ pour transformer{" "}
-            <span className="whitespace-nowrap">ta pièce.</span>
-          </p>
-        </section>
-
-        {/* 10. Social proof */}
-        <div className="flex items-center justify-center gap-1.5 mb-6 text-[14px] text-[#8B7E74]">
-          <div className="flex items-center gap-0.5 flex-shrink-0">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <StarIcon key={i} />
-            ))}
+        <div className="mt-4 space-y-3">
+          <div
+            className="rounded-xl px-3 py-3.5 text-center"
+            style={{ backgroundColor: "#EDE8E3" }}
+          >
+            <p
+              style={{
+                fontFamily: "var(--font-inter), Inter, sans-serif",
+                fontSize: "13px",
+                color: "#1A1A1A",
+              }}
+            >
+              🛡️ Satisfait ou remboursé — 7 jours
+            </p>
           </div>
-          <span className="whitespace-nowrap">
-            4,8/5 — +2 300 utilisateurs satisfaits
-          </span>
+
+          <div
+            className="rounded-xl px-3 py-3.5 text-center"
+            style={{ backgroundColor: "#EDE8E3" }}
+          >
+            <p
+              className="inline-flex items-center justify-center gap-2 flex-wrap"
+              style={{
+                fontFamily: "var(--font-inter), Inter, sans-serif",
+                fontSize: "13px",
+                color: "#1A1A1A",
+              }}
+            >
+              <span
+                className="pricing-live-dot inline-block h-2 w-2 rounded-full"
+                style={{ backgroundColor: "#4CAF50" }}
+                aria-hidden="true"
+              />
+              {formattedUnlockCount} utilisateurs ont débloqué leur rendu
+              aujourd&apos;hui
+            </p>
+          </div>
         </div>
 
-        {/* 11. Réassurance */}
-        <div
-          className="space-y-2 text-center text-sm text-muted leading-relaxed px-2"
-          style={{ paddingBottom: 20 }}
+        <button
+          type="button"
+          onClick={handleUnlock}
+          disabled={loading}
+          className="pricing-glow-cta w-full mt-5 text-white font-bold transition-colors disabled:opacity-50"
+          style={{
+            fontFamily: "var(--font-inter), Inter, sans-serif",
+            fontSize: "16px",
+            backgroundColor: "#A0522D",
+            borderRadius: "50px",
+            padding: "18px",
+          }}
         >
-          <p className="break-words">
-            🔒 Paiement sécurisé par Stripe
-            <br />
-            Annulable à tout moment
+          {loading ? "Chargement..." : "Débloquer mon rendu →"}
+        </button>
+
+        <div className="mt-5 space-y-2 text-center">
+          <p
+            style={{
+              fontFamily: "var(--font-inter), Inter, sans-serif",
+              fontSize: "12px",
+              color: "#8B7D6B",
+            }}
+          >
+            {expired ? (
+              "⚠️ Offre expirée"
+            ) : (
+              <>
+                ⏳ Cette offre expire dans{" "}
+                <span className="tabular-nums font-semibold">
+                  {formatPricingTimer(remainingMs)}
+                </span>
+              </>
+            )}
           </p>
-          <p>🛡️ Satisfait ou remboursé 7 jours</p>
+          <p
+            style={{
+              fontFamily: "var(--font-inter), Inter, sans-serif",
+              fontSize: "11px",
+              color: "#8B7D6B",
+            }}
+          >
+            🔒 Paiement sécurisé par Stripe
+          </p>
         </div>
       </div>
     </main>
