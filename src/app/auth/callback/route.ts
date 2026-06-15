@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { resolvePostAuthRedirectPath } from "@/lib/post-auth-redirect";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -13,39 +14,42 @@ export async function GET(request: Request) {
     options: CookieOptions;
   }[] = [];
 
-  if (code) {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(
-            cookiesToSet: {
-              name: string;
-              value: string;
-              options: CookieOptions;
-            }[]
-          ) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-              pendingCookies.push({ name, value, options });
-            });
-          },
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
         },
-      }
-    );
+        setAll(
+          cookiesToSet: {
+            name: string;
+            value: string;
+            options: CookieOptions;
+          }[]
+        ) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+            pendingCookies.push({ name, value, options });
+          });
+        },
+      },
+    }
+  );
 
+  if (code) {
     await supabase.auth.exchangeCodeForSession(code);
   }
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const selectedPlan = cookieStore.get("selectedPlan")?.value;
-  const redirectPath =
-    selectedPlan === "monthly" || selectedPlan === "yearly"
-      ? `/api/stripe/checkout?plan=${selectedPlan}`
-      : "/upload";
+  const redirectPath = user
+    ? await resolvePostAuthRedirectPath(supabase, user.id, { selectedPlan })
+    : "/upload";
 
   const response = NextResponse.redirect(new URL(redirectPath, origin));
 

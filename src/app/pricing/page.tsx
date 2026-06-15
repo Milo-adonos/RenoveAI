@@ -93,8 +93,8 @@ function setSelectedPlan(plan: SubscriptionPlan) {
 export default function PricingPage() {
   const router = useRouter();
   const captureFunnel = useFunnelCapture();
-  const [selectedPlan, setSelectedPlanState] = useState<SubscriptionPlan>("yearly");
-  const [loadingPlan, setLoadingPlan] = useState<SubscriptionPlan | null>(null);
+  const [selectedPlan, setSelectedPlanState] = useState<SubscriptionPlan>("monthly");
+  const [loading, setLoading] = useState(false);
   const [timerEnd, setTimerEnd] = useState<number | null>(null);
   const [remainingMs, setRemainingMs] = useState(0);
   const [unlockCount, setUnlockCount] = useState<number | null>(null);
@@ -124,9 +124,11 @@ export default function PricingPage() {
   }, [unlockCount]);
 
   async function handleChoosePlan(plan: SubscriptionPlan) {
+    if (loading) return;
+    setLoading(true);
+
     captureFunnel(FUNNEL.unlockClicked, { plan });
     captureFunnel(FUNNEL.planSelected, { plan });
-    setLoadingPlan(plan);
     setSelectedPlanState(plan);
     setSelectedPlan(plan);
 
@@ -141,6 +143,20 @@ export default function PricingPage() {
     }
 
     router.push("/auth/signup");
+  }
+
+  function PlanCtaLabel({ label }: { label: string }) {
+    if (!loading) return label;
+
+    return (
+      <span className="inline-flex items-center justify-center gap-2">
+        <span
+          className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+          aria-hidden="true"
+        />
+        Redirection en cours...
+      </span>
+    );
   }
 
   return (
@@ -295,7 +311,7 @@ export default function PricingPage() {
             <button
               type="button"
               onClick={() => handleChoosePlan("yearly")}
-              disabled={loadingPlan !== null}
+              disabled={loading}
               className="pricing-glow-cta w-full mt-5 text-white font-bold transition-colors disabled:opacity-50"
               style={{
                 fontFamily: "var(--font-inter), Inter, sans-serif",
@@ -303,11 +319,10 @@ export default function PricingPage() {
                 backgroundColor: "#A0522D",
                 borderRadius: "50px",
                 padding: "20px",
+                pointerEvents: loading ? "none" : "auto",
               }}
             >
-              {loadingPlan === "yearly"
-                ? "Chargement..."
-                : "Choisir l'annuel →"}
+              <PlanCtaLabel label="Choisir l'annuel →" />
             </button>
           </div>
           )}
@@ -376,7 +391,7 @@ export default function PricingPage() {
             <button
               type="button"
               onClick={() => handleChoosePlan("monthly")}
-              disabled={loadingPlan !== null}
+              disabled={loading}
               className="w-full mt-5 font-bold transition-colors disabled:opacity-50"
               style={{
                 fontFamily: "var(--font-inter), Inter, sans-serif",
@@ -386,11 +401,10 @@ export default function PricingPage() {
                 border: "2px solid #A0522D",
                 borderRadius: "50px",
                 padding: "18px",
+                pointerEvents: loading ? "none" : "auto",
               }}
             >
-              {loadingPlan === "monthly"
-                ? "Chargement..."
-                : "Choisir le mensuel →"}
+              <PlanCtaLabel label="Choisir le mensuel →" />
             </button>
           </div>
           )}

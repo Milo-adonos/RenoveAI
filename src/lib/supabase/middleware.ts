@@ -1,6 +1,17 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+function redirectWithSessionCookies(
+  url: URL,
+  supabaseResponse: NextResponse
+): NextResponse {
+  const redirectResponse = NextResponse.redirect(url);
+  supabaseResponse.cookies.getAll().forEach(({ name, value }) => {
+    redirectResponse.cookies.set(name, value);
+  });
+  return redirectResponse;
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -41,17 +52,23 @@ export async function updateSession(request: NextRequest) {
     }
 
     if (!user) {
-      return NextResponse.redirect(new URL("/auth/login", request.url));
+      return redirectWithSessionCookies(
+        new URL("/auth/signup", request.url),
+        supabaseResponse
+      );
     }
 
     const { data: profile } = await supabase
       .from("profiles")
       .select("subscription_status")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile || profile.subscription_status !== "active") {
-      return NextResponse.redirect(new URL("/pricing", request.url));
+      return redirectWithSessionCookies(
+        new URL("/pricing", request.url),
+        supabaseResponse
+      );
     }
   }
 

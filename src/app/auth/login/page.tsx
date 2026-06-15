@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Logo } from "@/components/Logo";
 import { createClient } from "@/lib/supabase/client";
 
@@ -9,6 +9,21 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function redirectIfAlreadyAuthenticated() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        window.location.replace("/api/auth/redirect");
+      }
+    }
+
+    redirectIfAlreadyAuthenticated();
+  }, []);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -27,24 +42,7 @@ export default function LoginPage() {
       return;
     }
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("subscription_status")
-        .eq("id", user.id)
-        .single();
-
-      if (profile?.subscription_status === "active") {
-        window.location.href = "/dashboard";
-        return;
-      }
-    }
-
-    window.location.href = "/upload";
+    window.location.href = "/api/auth/redirect";
   }
 
   async function handleGoogleLogin() {

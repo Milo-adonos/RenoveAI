@@ -6,10 +6,12 @@ import { FAQ } from "@/components/FAQ";
 import { SupportContact } from "@/components/SupportContact";
 import { OwnerAccess } from "@/components/OwnerAccess";
 import { beforeAfterExamples } from "@/lib/styles";
+import { LandingActiveRedirect } from "@/components/LandingActiveRedirect";
 
 export default function LandingPage() {
   return (
     <main className="min-h-screen overflow-x-hidden">
+      <LandingActiveRedirect />
       <Header landing showLogin={false} />
 
       {/* Hero */}
