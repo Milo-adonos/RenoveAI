@@ -221,18 +221,13 @@ export default function PricingPage() {
           </button>
         </div>
 
-        <div className="space-y-4 pricing-reveal-item pricing-reveal-delay-4">
+        <div className="pricing-reveal-item pricing-reveal-delay-4">
+          {selectedPlan === "yearly" && (
           <div
             className="relative rounded-2xl bg-white p-5"
             style={{
-              border:
-                selectedPlan === "yearly"
-                  ? "2px solid #A0522D"
-                  : "1px solid #F0EBE5",
-              boxShadow:
-                selectedPlan === "yearly"
-                  ? "0 4px 20px rgba(160, 82, 45, 0.15)"
-                  : "0 4px 16px rgba(0, 0, 0, 0.08)",
+              border: "2px solid #A0522D",
+              boxShadow: "0 4px 20px rgba(160, 82, 45, 0.15)",
             }}
           >
             <span
@@ -315,14 +310,13 @@ export default function PricingPage() {
                 : "Choisir l'annuel →"}
             </button>
           </div>
+          )}
 
+          {selectedPlan === "monthly" && (
           <div
             className="relative rounded-2xl bg-white p-5"
             style={{
-              border:
-                selectedPlan === "monthly"
-                  ? "2px solid #A0522D"
-                  : "1px solid #F0EBE5",
+              border: "2px solid #A0522D",
               boxShadow: "0 4px 16px rgba(0, 0, 0, 0.08)",
             }}
           >
@@ -399,6 +393,7 @@ export default function PricingPage() {
                 : "Choisir le mensuel →"}
             </button>
           </div>
+          )}
         </div>
 
         <div className="mt-4 space-y-3 pricing-reveal-item pricing-reveal-delay-5">

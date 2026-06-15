@@ -2,15 +2,11 @@ import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { createServiceClient } from "@/lib/supabase/server";
 import {
+  getStripeCustomerId,
   getSubscriptionPeriodEnd,
-  mapSubscriptionStatus,
+  normalizeSubscriptionPlan,
 } from "@/lib/subscription-sync";
 import { getResetDateIn30Days } from "@/lib/generation-limits";
-
-function normalizePlan(plan: string | undefined): "monthly" | "yearly" {
-  if (plan === "yearly" || plan === "annual") return "yearly";
-  return "monthly";
-}
 
 export async function activateSubscriptionFromSession(
   session: Stripe.Checkout.Session
@@ -21,11 +17,13 @@ export async function activateSubscriptionFromSession(
     session.payment_status === "no_payment_required";
 
   if (!userId || !isPaid) {
+    console.error("[webhook] checkout.session.completed: missing user or unpaid");
     return false;
   }
 
   const subscriptionId = session.subscription;
   if (!subscriptionId) {
+    console.error("[webhook] checkout.session.completed: no subscription on session");
     return false;
   }
 
@@ -34,23 +32,26 @@ export async function activateSubscriptionFromSession(
       ? await stripe.subscriptions.retrieve(subscriptionId)
       : subscriptionId;
 
-  const plan = normalizePlan(session.metadata?.plan);
+  const plan = normalizeSubscriptionPlan(session.metadata?.plan);
+  const customerId = getStripeCustomerId(session.customer);
+  const email = session.customer_details?.email ?? null;
 
   const serviceClient = await createServiceClient();
-  const updates: {
-    subscription_status: string;
-    subscription_plan: string;
-    subscription_end_date: string | null;
-    generations_used: number;
-    generations_reset_date: string;
-    full_name?: string;
-  } = {
+  const updates: Record<string, string | number | null> = {
     subscription_status: "active",
     subscription_plan: plan,
     subscription_end_date: getSubscriptionPeriodEnd(subscription),
     generations_used: 0,
     generations_reset_date: getResetDateIn30Days(),
   };
+
+  if (customerId) {
+    updates.stripe_customer_id = customerId;
+  }
+
+  if (email) {
+    updates.email = email;
+  }
 
   if (session.customer_details?.name) {
     updates.full_name = session.customer_details.name;
@@ -62,9 +63,12 @@ export async function activateSubscriptionFromSession(
     .eq("id", userId);
 
   if (error) {
-    console.error("Failed to activate subscription:", error);
+    console.error("[webhook] checkout.session.completed update failed:", error);
     return false;
   }
 
+  console.log(
+    `[webhook] checkout.session.completed: activated ${userId} plan=${plan} customer=${customerId}`
+  );
   return true;
 }
