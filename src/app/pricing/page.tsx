@@ -264,10 +264,10 @@ export default function PricingPage() {
                   color: "#8B7D6B",
                 }}
               >
-                99,99€
+                99,90€
               </span>
               <span className="font-hero text-[38px] font-bold text-[#1A1A1A] leading-none">
-                49,99€
+                49,90€
               </span>
               <span
                 style={{
@@ -287,7 +287,7 @@ export default function PricingPage() {
                 color: "#8B7D6B",
               }}
             >
-              soit 4,17€/mois — 2 mois offerts
+              soit 4,16€/mois — 2 mois offerts
             </p>
             <div className="my-4 h-px bg-[#F0EBE5]" />
             <FeatureList items={yearlyFeatures} />
