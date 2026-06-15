@@ -27,8 +27,12 @@ export const metadata: Metadata = {
   description:
     "Prends une photo, choisis un style et l'IA redesigne ta pièce en 30 secondes.",
   icons: {
-    icon: "/icon.png",
+    icon: [
+      { url: "/icon.png", sizes: "192x192", type: "image/png" },
+      { url: "/favicon.ico", sizes: "48x48" },
+    ],
     shortcut: "/favicon.ico",
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
 
