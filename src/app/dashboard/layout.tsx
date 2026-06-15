@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { DashboardShell } from "@/components/DashboardShell";
 import { isBypassAuthEnabled } from "@/lib/dev-bypass";
 
+export { noIndexMetadata as metadata } from "@/lib/noindex-metadata";
+
 export default async function DashboardLayout({
   children,
 }: {

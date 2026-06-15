@@ -1,6 +1,4 @@
-export const metadata = {
-  robots: "noindex, nofollow",
-};
+export { noIndexMetadata as metadata } from "@/lib/noindex-metadata";
 
 export default function LoadingLayout({
   children,

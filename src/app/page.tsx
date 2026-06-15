@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { Header } from "@/components/Header";
 import { LiveCounter } from "@/components/LiveCounter";
 import { BeforeAfterCarousel } from "@/components/BeforeAfterCarousel";
@@ -7,6 +8,13 @@ import { SupportContact } from "@/components/SupportContact";
 import { OwnerAccess } from "@/components/OwnerAccess";
 import { beforeAfterExamples } from "@/lib/styles";
 import { LandingActiveRedirect } from "@/components/LandingActiveRedirect";
+import { getSiteUrl } from "@/lib/site-url";
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: getSiteUrl(),
+  },
+};
 
 export default function LandingPage() {
   return (
