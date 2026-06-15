@@ -15,19 +15,21 @@ import { createClient } from "@/lib/supabase/client";
 const UNLOCK_COUNT_KEY = "renove_pricing_unlock_count";
 const UNLOCK_RESET_HOUR = 15;
 
-const monthlyFeatures = [
+const yearlyFeatures = [
   "Générations illimitées",
   "Téléchargement HD",
   "19 styles disponibles",
   "Historique complet",
   "Support prioritaire",
+  "Accès en avant-première aux nouveaux styles",
 ];
 
-const weeklyFeatures = [
-  "20 générations par semaine",
+const monthlyFeatures = [
+  "30 générations par mois",
   "Téléchargement HD",
   "19 styles disponibles",
-  "Historique limité à 7 jours",
+  "Historique 30 jours",
+  "Support standard",
 ];
 
 function FeatureList({ items }: { items: string[] }) {
@@ -91,8 +93,8 @@ function setSelectedPlan(plan: SubscriptionPlan) {
 export default function PricingPage() {
   const router = useRouter();
   const captureFunnel = useFunnelCapture();
-  const [selectedPlan, setSelectedPlanState] = useState<SubscriptionPlan>("monthly");
-  const [loading, setLoading] = useState(false);
+  const [selectedPlan, setSelectedPlanState] = useState<SubscriptionPlan>("yearly");
+  const [loadingPlan, setLoadingPlan] = useState<SubscriptionPlan | null>(null);
   const [timerEnd, setTimerEnd] = useState<number | null>(null);
   const [remainingMs, setRemainingMs] = useState(0);
   const [unlockCount, setUnlockCount] = useState<number | null>(null);
@@ -115,18 +117,18 @@ export default function PricingPage() {
   }, [timerEnd]);
 
   const expired = isPricingTimerExpired(remainingMs);
-  const isMonthly = selectedPlan === "monthly";
 
   const formattedUnlockCount = useMemo(() => {
     if (unlockCount === null) return "…";
     return formatUnlockCount(unlockCount);
   }, [unlockCount]);
 
-  async function handleUnlock() {
-    captureFunnel(FUNNEL.unlockClicked, { plan: selectedPlan });
-    captureFunnel(FUNNEL.planSelected, { plan: selectedPlan });
-    setLoading(true);
-    setSelectedPlan(selectedPlan);
+  async function handleChoosePlan(plan: SubscriptionPlan) {
+    captureFunnel(FUNNEL.unlockClicked, { plan });
+    captureFunnel(FUNNEL.planSelected, { plan });
+    setLoadingPlan(plan);
+    setSelectedPlanState(plan);
+    setSelectedPlan(plan);
 
     const supabase = createClient();
     const {
@@ -134,7 +136,7 @@ export default function PricingPage() {
     } = await supabase.auth.getSession();
 
     if (session) {
-      window.location.href = `/api/stripe/checkout?plan=${selectedPlan}`;
+      window.location.href = `/api/stripe/checkout?plan=${plan}`;
       return;
     }
 
@@ -170,25 +172,6 @@ export default function PricingPage() {
         >
           <button
             type="button"
-            onClick={() => setSelectedPlanState("weekly")}
-            className="relative flex-1 rounded-[50px] py-2.5 text-sm transition-all"
-            style={{
-              fontFamily: "var(--font-inter), Inter, sans-serif",
-              fontWeight: selectedPlan === "weekly" ? 700 : 500,
-              color: selectedPlan === "weekly" ? "#1A1A1A" : "#8B7D6B",
-              backgroundColor:
-                selectedPlan === "weekly" ? "#FFFFFF" : "transparent",
-              boxShadow:
-                selectedPlan === "weekly"
-                  ? "0 2px 8px rgba(0, 0, 0, 0.06)"
-                  : "none",
-            }}
-          >
-            Hebdo
-          </button>
-
-          <button
-            type="button"
             onClick={() => setSelectedPlanState("monthly")}
             className="relative flex-1 rounded-[50px] py-2.5 text-sm transition-all"
             style={{
@@ -204,6 +187,25 @@ export default function PricingPage() {
             }}
           >
             Mensuel
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectedPlanState("yearly")}
+            className="relative flex-1 rounded-[50px] py-2.5 text-sm transition-all"
+            style={{
+              fontFamily: "var(--font-inter), Inter, sans-serif",
+              fontWeight: selectedPlan === "yearly" ? 700 : 500,
+              color: selectedPlan === "yearly" ? "#1A1A1A" : "#8B7D6B",
+              backgroundColor:
+                selectedPlan === "yearly" ? "#FFFFFF" : "transparent",
+              boxShadow:
+                selectedPlan === "yearly"
+                  ? "0 2px 8px rgba(0, 0, 0, 0.06)"
+                  : "none",
+            }}
+          >
+            Annuel
             <span
               className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-2 py-0.5"
               style={{
@@ -214,101 +216,189 @@ export default function PricingPage() {
                 backgroundColor: "#E8F5E9",
               }}
             >
-              PLUS ÉCONOMIQUE
+              MOITIÉ PRIX 🎁
             </span>
           </button>
         </div>
 
-        <div
-          className="relative rounded-2xl bg-white p-5 pricing-reveal-item pricing-reveal-delay-4"
-          style={{
-            border: "1px solid #F0EBE5",
-            boxShadow: "0 4px 16px rgba(0, 0, 0, 0.08)",
-          }}
-        >
-          <span
-            className="absolute -top-3 left-4 z-10 rounded-lg font-bold text-white"
+        <div className="space-y-4 pricing-reveal-item pricing-reveal-delay-4">
+          <div
+            className="relative rounded-2xl bg-white p-5"
             style={{
-              backgroundColor: "#A0522D",
-              fontFamily: "var(--font-inter), Inter, sans-serif",
-              fontSize: "18px",
-              padding: "10px 16px",
-              transform: "rotate(-6deg)",
-              boxShadow: "0 4px 12px rgba(160, 82, 45, 0.4)",
+              border:
+                selectedPlan === "yearly"
+                  ? "2px solid #A0522D"
+                  : "1px solid #F0EBE5",
+              boxShadow:
+                selectedPlan === "yearly"
+                  ? "0 4px 20px rgba(160, 82, 45, 0.15)"
+                  : "0 4px 16px rgba(0, 0, 0, 0.08)",
             }}
           >
-            -50%
-          </span>
+            <span
+              className="inline-block rounded-lg px-2.5 py-1 font-bold text-white mb-3"
+              style={{
+                backgroundColor: "#A0522D",
+                fontFamily: "var(--font-inter), Inter, sans-serif",
+                fontSize: "11px",
+              }}
+            >
+              MEILLEURE VALEUR 🎁
+            </span>
 
-          {isMonthly ? (
-            <>
-              <div className="mt-2 flex flex-wrap items-baseline gap-2">
-                <span
-                  className="line-through"
-                  style={{
-                    fontFamily: "var(--font-inter), Inter, sans-serif",
-                    fontSize: "14px",
-                    color: "#8B7D6B",
-                  }}
-                >
-                  19,99€
-                </span>
-                <span className="font-hero text-[38px] font-bold text-[#1A1A1A] leading-none">
-                  9,99€
-                </span>
-                <span
-                  style={{
-                    fontFamily: "var(--font-inter), Inter, sans-serif",
-                    fontSize: "14px",
-                    color: "#8B7D6B",
-                  }}
-                >
-                  /mois
-                </span>
-              </div>
-              <div className="my-4 h-px bg-[#F0EBE5]" />
-              <FeatureList items={monthlyFeatures} />
-            </>
-          ) : (
-            <>
-              <div className="mt-2 flex flex-wrap items-baseline gap-2">
-                <span
-                  className="line-through"
-                  style={{
-                    fontFamily: "var(--font-inter), Inter, sans-serif",
-                    fontSize: "14px",
-                    color: "#8B7D6B",
-                  }}
-                >
-                  9,99€
-                </span>
-                <span className="font-hero text-[38px] font-bold text-[#1A1A1A] leading-none">
-                  4,99€
-                </span>
-                <span
-                  style={{
-                    fontFamily: "var(--font-inter), Inter, sans-serif",
-                    fontSize: "14px",
-                    color: "#8B7D6B",
-                  }}
-                >
-                  /semaine
-                </span>
-              </div>
-              <p
-                className="mt-2 font-bold"
+            <span
+              className="absolute -top-3 right-4 z-10 rounded-lg font-bold text-white"
+              style={{
+                backgroundColor: "#A0522D",
+                fontFamily: "var(--font-inter), Inter, sans-serif",
+                fontSize: "18px",
+                padding: "10px 16px",
+                transform: "rotate(-6deg)",
+                boxShadow: "0 4px 12px rgba(160, 82, 45, 0.4)",
+              }}
+            >
+              -50%
+            </span>
+
+            <div className="mt-2 flex flex-wrap items-baseline gap-2">
+              <span
+                className="line-through"
                 style={{
                   fontFamily: "var(--font-inter), Inter, sans-serif",
-                  fontSize: "12px",
-                  color: "#C0392B",
+                  fontSize: "14px",
+                  color: "#8B7D6B",
                 }}
               >
-                soit 21,62€/mois
-              </p>
-              <div className="my-4 h-px bg-[#F0EBE5]" />
-              <FeatureList items={weeklyFeatures} />
-            </>
-          )}
+                99,99€
+              </span>
+              <span className="font-hero text-[38px] font-bold text-[#1A1A1A] leading-none">
+                49,99€
+              </span>
+              <span
+                style={{
+                  fontFamily: "var(--font-inter), Inter, sans-serif",
+                  fontSize: "14px",
+                  color: "#8B7D6B",
+                }}
+              >
+                /an
+              </span>
+            </div>
+            <p
+              className="mt-2"
+              style={{
+                fontFamily: "var(--font-inter), Inter, sans-serif",
+                fontSize: "13px",
+                color: "#8B7D6B",
+              }}
+            >
+              soit 4,17€/mois — 2 mois offerts
+            </p>
+            <div className="my-4 h-px bg-[#F0EBE5]" />
+            <FeatureList items={yearlyFeatures} />
+
+            <button
+              type="button"
+              onClick={() => handleChoosePlan("yearly")}
+              disabled={loadingPlan !== null}
+              className="pricing-glow-cta w-full mt-5 text-white font-bold transition-colors disabled:opacity-50"
+              style={{
+                fontFamily: "var(--font-inter), Inter, sans-serif",
+                fontSize: "18px",
+                backgroundColor: "#A0522D",
+                borderRadius: "50px",
+                padding: "20px",
+              }}
+            >
+              {loadingPlan === "yearly"
+                ? "Chargement..."
+                : "Choisir l'annuel →"}
+            </button>
+          </div>
+
+          <div
+            className="relative rounded-2xl bg-white p-5"
+            style={{
+              border:
+                selectedPlan === "monthly"
+                  ? "2px solid #A0522D"
+                  : "1px solid #F0EBE5",
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.08)",
+            }}
+          >
+            <span
+              className="inline-block rounded-lg px-2.5 py-1 font-bold mb-3"
+              style={{
+                backgroundColor: "#EDE8E3",
+                color: "#1A1A1A",
+                fontFamily: "var(--font-inter), Inter, sans-serif",
+                fontSize: "11px",
+              }}
+            >
+              LE PLUS POPULAIRE
+            </span>
+
+            <span
+              className="absolute -top-3 right-4 z-10 rounded-lg font-bold text-white"
+              style={{
+                backgroundColor: "#A0522D",
+                fontFamily: "var(--font-inter), Inter, sans-serif",
+                fontSize: "18px",
+                padding: "10px 16px",
+                transform: "rotate(-6deg)",
+                boxShadow: "0 4px 12px rgba(160, 82, 45, 0.4)",
+              }}
+            >
+              -50%
+            </span>
+
+            <div className="mt-2 flex flex-wrap items-baseline gap-2">
+              <span
+                className="line-through"
+                style={{
+                  fontFamily: "var(--font-inter), Inter, sans-serif",
+                  fontSize: "14px",
+                  color: "#8B7D6B",
+                }}
+              >
+                19,99€
+              </span>
+              <span className="font-hero text-[38px] font-bold text-[#1A1A1A] leading-none">
+                9,99€
+              </span>
+              <span
+                style={{
+                  fontFamily: "var(--font-inter), Inter, sans-serif",
+                  fontSize: "14px",
+                  color: "#8B7D6B",
+                }}
+              >
+                /mois
+              </span>
+            </div>
+            <div className="my-4 h-px bg-[#F0EBE5]" />
+            <FeatureList items={monthlyFeatures} />
+
+            <button
+              type="button"
+              onClick={() => handleChoosePlan("monthly")}
+              disabled={loadingPlan !== null}
+              className="w-full mt-5 font-bold transition-colors disabled:opacity-50"
+              style={{
+                fontFamily: "var(--font-inter), Inter, sans-serif",
+                fontSize: "18px",
+                color: "#A0522D",
+                backgroundColor: "transparent",
+                border: "2px solid #A0522D",
+                borderRadius: "50px",
+                padding: "18px",
+              }}
+            >
+              {loadingPlan === "monthly"
+                ? "Chargement..."
+                : "Choisir le mensuel →"}
+            </button>
+          </div>
         </div>
 
         <div className="mt-4 space-y-3 pricing-reveal-item pricing-reveal-delay-5">
@@ -369,22 +459,6 @@ export default function PricingPage() {
             </p>
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={handleUnlock}
-          disabled={loading}
-          className="pricing-glow-cta w-full mt-5 text-white font-bold transition-colors disabled:opacity-50 pricing-reveal-item pricing-reveal-delay-6"
-          style={{
-            fontFamily: "var(--font-inter), Inter, sans-serif",
-            fontSize: "18px",
-            backgroundColor: "#A0522D",
-            borderRadius: "50px",
-            padding: "20px",
-          }}
-        >
-          {loading ? "Chargement..." : "Débloquer mon rendu →"}
-        </button>
 
         <div className="mt-5 space-y-2 text-center pricing-reveal-item pricing-reveal-delay-7">
           <p

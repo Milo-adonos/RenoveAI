@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import {
-  getNextMonday,
-  getWeeklyLimitInfo,
-  shouldResetWeeklyCounter,
-  WEEKLY_LIMIT,
-} from "@/lib/weekly-generations";
+  canGenerateWithProfile,
+  getNextCalendarMonthStart,
+  isMonthlyPlan,
+  MONTHLY_GENERATION_LIMIT,
+  shouldResetMonthlyGenerations,
+} from "@/lib/generation-limits";
 
 export async function GET() {
   try {
@@ -22,7 +23,7 @@ export async function GET() {
     const { data: profile } = await serviceClient
       .from("profiles")
       .select(
-        "subscription_plan, subscription_status, weekly_generations_used, weekly_reset_date"
+        "subscription_plan, subscription_status, generations_used, generations_reset_date"
       )
       .eq("id", user.id)
       .single();
@@ -31,32 +32,36 @@ export async function GET() {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    let used = profile.weekly_generations_used ?? 0;
+    let used = profile.generations_used ?? 0;
+    let resetDate = profile.generations_reset_date;
 
-    if (shouldResetWeeklyCounter(profile.weekly_reset_date)) {
+    if (shouldResetMonthlyGenerations(resetDate)) {
       used = 0;
+      resetDate = getNextCalendarMonthStart().toISOString();
       await serviceClient
         .from("profiles")
         .update({
-          weekly_generations_used: 0,
-          weekly_reset_date: new Date().toISOString(),
+          generations_used: 0,
+          generations_reset_date: resetDate,
         })
         .eq("id", user.id);
     }
 
     const plan = profile.subscription_plan || "monthly";
-    const isWeekly = plan === "weekly";
-    const weekly = getWeeklyLimitInfo(used);
+    const isMonthly = isMonthlyPlan(plan);
 
     return NextResponse.json({
       plan,
       status: profile.subscription_status,
-      isWeekly,
-      weeklyLimit: WEEKLY_LIMIT,
-      weeklyUsed: used,
-      weeklyRemaining: weekly.remaining,
-      canGenerate: !isWeekly || used < WEEKLY_LIMIT,
-      resetDate: getNextMonday().toISOString(),
+      isMonthly,
+      isYearly: !isMonthly && plan === "yearly",
+      monthlyLimit: MONTHLY_GENERATION_LIMIT,
+      generationsUsed: used,
+      generationsRemaining: isMonthly
+        ? Math.max(0, MONTHLY_GENERATION_LIMIT - used)
+        : null,
+      canGenerate: canGenerateWithProfile(profile, used),
+      resetDate,
     });
   } catch (error) {
     console.error("[generations/limit] Error:", error);

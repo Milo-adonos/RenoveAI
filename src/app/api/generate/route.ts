@@ -10,9 +10,43 @@ import { getSupabaseConfigStatus } from "@/lib/supabase/config";
 import { uploadImageToStorage } from "@/lib/supabase/storage";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import {
-  shouldResetWeeklyCounter,
-  WEEKLY_LIMIT,
-} from "@/lib/weekly-generations";
+  canGenerateWithProfile,
+  getNextCalendarMonthStart,
+  isMonthlyPlan,
+  MONTHLY_GENERATION_LIMIT,
+  shouldResetMonthlyGenerations,
+} from "@/lib/generation-limits";
+
+async function getProfileWithReset(
+  serviceClient: Awaited<ReturnType<typeof createServiceClient>>,
+  userId: string
+) {
+  const { data: profile } = await serviceClient
+    .from("profiles")
+    .select(
+      "subscription_plan, subscription_status, generations_used, generations_reset_date"
+    )
+    .eq("id", userId)
+    .single();
+
+  if (!profile) return null;
+
+  let used = profile.generations_used ?? 0;
+
+  if (shouldResetMonthlyGenerations(profile.generations_reset_date)) {
+    await serviceClient
+      .from("profiles")
+      .update({
+        generations_used: 0,
+        generations_reset_date: getNextCalendarMonthStart().toISOString(),
+      })
+      .eq("id", userId);
+    used = 0;
+    profile.generations_used = 0;
+  }
+
+  return { profile, used };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,26 +55,32 @@ export async function POST(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (user) {
-      const serviceClient = await createServiceClient();
-      const { data: profile } = await serviceClient
-        .from("profiles")
-        .select("subscription_plan, weekly_generations_used, weekly_reset_date")
-        .eq("id", user.id)
-        .single();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-      if (profile?.subscription_plan === "weekly") {
-        let used = profile.weekly_generations_used ?? 0;
-        if (shouldResetWeeklyCounter(profile.weekly_reset_date)) {
-          used = 0;
-        }
-        if (used >= WEEKLY_LIMIT) {
-          return NextResponse.json(
-            { error: "Weekly generation limit reached" },
-            { status: 429 }
-          );
-        }
-      }
+    const serviceClient = await createServiceClient();
+    const profileData = await getProfileWithReset(serviceClient, user.id);
+
+    if (!profileData) {
+      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+    }
+
+    const { profile, used } = profileData;
+
+    if (profile.subscription_status !== "active") {
+      return NextResponse.json({ error: "no_subscription" }, { status: 403 });
+    }
+
+    if (
+      isMonthlyPlan(profile.subscription_plan) &&
+      used >= MONTHLY_GENERATION_LIMIT
+    ) {
+      return NextResponse.json({ error: "limit_reached" }, { status: 403 });
+    }
+
+    if (!canGenerateWithProfile(profile, used)) {
+      return NextResponse.json({ error: "limit_reached" }, { status: 403 });
     }
 
     const body = await request.json();
@@ -49,7 +89,14 @@ export async function POST(request: NextRequest) {
     console.log("[generate] Étape 1 — Requête reçue");
     console.log("[generate] Config Supabase:", getSupabaseConfigStatus());
     console.log("[generate] imageUrl présent:", !!imageUrl);
-    console.log("[generate] imageUrl type:", imageUrl?.startsWith("data:") ? "base64" : imageUrl?.startsWith("http") ? "url" : "inconnu");
+    console.log(
+      "[generate] imageUrl type:",
+      imageUrl?.startsWith("data:")
+        ? "base64"
+        : imageUrl?.startsWith("http")
+          ? "url"
+          : "inconnu"
+    );
     console.log("[generate] style:", style);
 
     if (!imageUrl) {
@@ -62,7 +109,6 @@ export async function POST(request: NextRequest) {
 
     let finalImageUrl = imageUrl;
 
-    // Si base64 (fallback upload client), uploader via service role
     if (imageUrl.startsWith("data:")) {
       console.log("[generate] Étape 2 — Upload base64 vers Supabase Storage...");
 
@@ -95,14 +141,24 @@ export async function POST(request: NextRequest) {
       finalImageUrl = result.url;
       console.log("[generate] Étape 2 OK — URL publique:", finalImageUrl);
     } else {
-      console.log("[generate] Étape 2 — URL déjà publique, pas d'upload nécessaire");
+      console.log(
+        "[generate] Étape 2 — URL déjà publique, pas d'upload nécessaire"
+      );
     }
 
     const fullPrompt = buildGenerationPrompt(style, customPrompt);
 
     console.log("[generate] Étape 3 — Prompt prêt", fullPrompt.length, "car.");
-
     console.log("[generate] Étape 4 — Génération nano-banana-2...");
+
+    const incrementMonthlyUsage = async () => {
+      if (isMonthlyPlan(profile.subscription_plan)) {
+        await serviceClient
+          .from("profiles")
+          .update({ generations_used: used + 1 })
+          .eq("id", user.id);
+      }
+    };
 
     if (isFalConfigured()) {
       try {
@@ -111,6 +167,7 @@ export async function POST(request: NextRequest) {
           style,
           customPrompt
         );
+        await incrementMonthlyUsage();
         console.log("[generate] fal nano-banana-2 OK");
         return NextResponse.json({
           generatedUrl,

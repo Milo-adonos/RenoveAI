@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 
   const selectedPlan = cookieStore.get("selectedPlan")?.value;
   const redirectPath =
-    selectedPlan === "weekly" || selectedPlan === "monthly"
+    selectedPlan === "monthly" || selectedPlan === "yearly"
       ? `/api/stripe/checkout?plan=${selectedPlan}`
       : "/upload";
 

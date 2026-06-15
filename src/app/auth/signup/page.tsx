@@ -9,7 +9,7 @@ function getSelectedPlanFromCookie(): string | null {
   if (typeof document === "undefined") return null;
   const match = document.cookie.match(/(?:^|; )selectedPlan=([^;]*)/);
   const plan = match?.[1];
-  if (plan === "weekly" || plan === "monthly") return plan;
+  if (plan === "weekly" || plan === "monthly" || plan === "yearly") return plan;
   return null;
 }
 

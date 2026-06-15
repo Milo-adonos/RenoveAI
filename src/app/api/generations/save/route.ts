@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { persistGeneratedImageFromUrl } from "@/lib/supabase/storage";
 import {
-  shouldResetWeeklyCounter,
-  WEEKLY_LIMIT,
-} from "@/lib/weekly-generations";
+  canGenerateWithProfile,
+  getNextCalendarMonthStart,
+  isMonthlyPlan,
+  MONTHLY_GENERATION_LIMIT,
+  shouldResetMonthlyGenerations,
+} from "@/lib/generation-limits";
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,8 +20,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { originalUrl, generatedUrl, style, customPrompt, originalPath } =
-      await request.json();
+    const {
+      originalUrl,
+      generatedUrl,
+      style,
+      customPrompt,
+      originalPath,
+      asyncCompletion,
+    } = await request.json();
 
     if (!originalUrl || !generatedUrl) {
       return NextResponse.json(
@@ -30,7 +39,6 @@ export async function POST(request: NextRequest) {
     const serviceClient = await createServiceClient();
     let finalOriginalUrl = originalUrl;
 
-    // Move from temp to permanent if we have a storage path
     if (originalPath && originalPath.startsWith("temp/")) {
       const permanentPath = originalPath.replace("temp/", "permanent/");
       const { data: fileData } = await serviceClient.storage
@@ -53,22 +61,38 @@ export async function POST(request: NextRequest) {
 
     const { data: profile } = await serviceClient
       .from("profiles")
-      .select("subscription_plan, weekly_generations_used, weekly_reset_date")
+      .select(
+        "subscription_plan, subscription_status, generations_used, generations_reset_date"
+      )
       .eq("id", user.id)
       .single();
 
-    const plan = profile?.subscription_plan || "monthly";
-    let weeklyUsed = profile?.weekly_generations_used ?? 0;
-
-    if (shouldResetWeeklyCounter(profile?.weekly_reset_date)) {
-      weeklyUsed = 0;
+    if (!profile || profile.subscription_status !== "active") {
+      return NextResponse.json({ error: "no_subscription" }, { status: 403 });
     }
 
-    if (plan === "weekly" && weeklyUsed >= WEEKLY_LIMIT) {
-      return NextResponse.json(
-        { error: "Weekly generation limit reached" },
-        { status: 429 }
-      );
+    let used = profile.generations_used ?? 0;
+
+    if (shouldResetMonthlyGenerations(profile.generations_reset_date)) {
+      used = 0;
+      await serviceClient
+        .from("profiles")
+        .update({
+          generations_used: 0,
+          generations_reset_date: getNextCalendarMonthStart().toISOString(),
+        })
+        .eq("id", user.id);
+    }
+
+    if (
+      isMonthlyPlan(profile.subscription_plan) &&
+      used >= MONTHLY_GENERATION_LIMIT
+    ) {
+      return NextResponse.json({ error: "limit_reached" }, { status: 403 });
+    }
+
+    if (!canGenerateWithProfile(profile, used)) {
+      return NextResponse.json({ error: "limit_reached" }, { status: 403 });
     }
 
     let finalGeneratedUrl = generatedUrl;
@@ -103,13 +127,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    if (plan === "weekly") {
+    if (isMonthlyPlan(profile.subscription_plan) && asyncCompletion) {
       await serviceClient
         .from("profiles")
-        .update({
-          weekly_generations_used: weeklyUsed + 1,
-          weekly_reset_date: new Date().toISOString(),
-        })
+        .update({ generations_used: used + 1 })
         .eq("id", user.id);
     }
 

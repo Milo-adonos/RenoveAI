@@ -5,6 +5,12 @@ import {
   getSubscriptionPeriodEnd,
   mapSubscriptionStatus,
 } from "@/lib/subscription-sync";
+import { getResetDateIn30Days } from "@/lib/generation-limits";
+
+function normalizePlan(plan: string | undefined): "monthly" | "yearly" {
+  if (plan === "yearly" || plan === "annual") return "yearly";
+  return "monthly";
+}
 
 export async function activateSubscriptionFromSession(
   session: Stripe.Checkout.Session
@@ -28,21 +34,22 @@ export async function activateSubscriptionFromSession(
       ? await stripe.subscriptions.retrieve(subscriptionId)
       : subscriptionId;
 
-  const plan = (session.metadata?.plan || "monthly") as
-    | "weekly"
-    | "monthly"
-    | "annual";
+  const plan = normalizePlan(session.metadata?.plan);
 
   const serviceClient = await createServiceClient();
   const updates: {
     subscription_status: string;
     subscription_plan: string;
     subscription_end_date: string | null;
+    generations_used: number;
+    generations_reset_date: string;
     full_name?: string;
   } = {
-    subscription_status: mapSubscriptionStatus(subscription.status),
+    subscription_status: "active",
     subscription_plan: plan,
     subscription_end_date: getSubscriptionPeriodEnd(subscription),
+    generations_used: 0,
+    generations_reset_date: getResetDateIn30Days(),
   };
 
   if (session.customer_details?.name) {

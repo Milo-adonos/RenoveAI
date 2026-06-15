@@ -6,9 +6,9 @@ import { stripe, getPriceId } from "@/lib/stripe";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  const plan = (request.nextUrl.searchParams.get("plan") || "monthly") as
-    | "weekly"
-    | "monthly";
+  const plan = (request.nextUrl.searchParams.get("plan") || "yearly") as
+    | "monthly"
+    | "yearly";
 
   try {
     const supabase = await createClient();

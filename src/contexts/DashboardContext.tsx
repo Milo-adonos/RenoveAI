@@ -13,7 +13,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { Generation } from "@/types/database";
 import { isBypassAuthEnabled, getDevBypassUser } from "@/lib/dev-bypass";
 import { addDevCreation } from "@/lib/dev-creations";
-import { getNextMonday, WEEKLY_LIMIT } from "@/lib/weekly-generations";
+import { MONTHLY_GENERATION_LIMIT } from "@/lib/generation-limits";
 import {
   clearCheckoutSession,
   getCheckoutSession,
@@ -21,7 +21,7 @@ import {
 } from "@/lib/session";
 
 import { resolveGenerationResponse } from "@/lib/poll-generation";
-const DEV_WEEKLY_KEY = "renove_dev_weekly_used";
+const DEV_MONTHLY_KEY = "renove_dev_monthly_used";
 
 export type PendingGeneration = {
   style?: string;
@@ -79,14 +79,14 @@ export function useDashboard() {
   return ctx;
 }
 
-function getDevWeeklyUsed(): number {
+function getDevMonthlyUsed(): number {
   if (typeof window === "undefined") return 0;
-  return Number(localStorage.getItem(DEV_WEEKLY_KEY) || "0");
+  return Number(localStorage.getItem(DEV_MONTHLY_KEY) || "0");
 }
 
-function incrementDevWeeklyUsed(): void {
-  const next = getDevWeeklyUsed() + 1;
-  localStorage.setItem(DEV_WEEKLY_KEY, String(next));
+function incrementDevMonthlyUsed(): void {
+  const next = getDevMonthlyUsed() + 1;
+  localStorage.setItem(DEV_MONTHLY_KEY, String(next));
 }
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
@@ -112,15 +112,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
       if (isBypassAuthEnabled()) {
         const devUser = getDevBypassUser();
-        if (devUser?.subscription_plan === "weekly") {
-          const used = getDevWeeklyUsed();
-          if (used >= WEEKLY_LIMIT) {
-            const reset = getNextMonday().toLocaleDateString("fr-FR", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-            });
-            return `Tu as atteint ta limite hebdomadaire. Reviens ${reset} ou passe au mensuel.`;
+        if (devUser?.subscription_plan === "monthly") {
+          const used = getDevMonthlyUsed();
+          if (used >= MONTHLY_GENERATION_LIMIT) {
+            return "Tu as utilisé tes 30 générations ce mois.";
           }
         }
 
@@ -158,8 +153,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
             custom_prompt: input.customPrompt || null,
           });
 
-          if (devUser?.subscription_plan === "weekly") {
-            incrementDevWeeklyUsed();
+          if (devUser?.subscription_plan === "monthly") {
+            incrementDevMonthlyUsed();
           }
 
           setPendingGeneration(null);
@@ -179,11 +174,11 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         const limit = await limitRes.json();
         if (!limit.canGenerate) {
           const reset = new Date(limit.resetDate).toLocaleDateString("fr-FR", {
-            weekday: "long",
             day: "numeric",
             month: "long",
+            year: "numeric",
           });
-          return `Tu as atteint ta limite hebdomadaire. Reviens ${reset} ou passe au mensuel.`;
+          return `Tu as utilisé tes 30 générations ce mois. Renouvellement le ${reset}.`;
         }
       }
 
@@ -236,6 +231,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
             style: input.style,
             customPrompt: input.customPrompt,
             originalPath: input.originalPath,
+            asyncCompletion: !data.sync,
           }),
         })
           .then(async (saveRes) => {

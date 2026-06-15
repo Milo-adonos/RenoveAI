@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { activateSubscriptionFromSession } from "@/lib/activate-subscription";
-import { syncSubscriptionToProfile, resolveUserIdFromSubscription, getSubscriptionPeriodEnd } from "@/lib/subscription-sync";
+import {
+  syncSubscriptionToProfile,
+  resolveUserIdFromSubscription,
+  getSubscriptionPeriodEnd,
+} from "@/lib/subscription-sync";
 import { createServiceClient } from "@/lib/supabase/server";
+import { getResetDateIn30Days } from "@/lib/generation-limits";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +73,25 @@ export async function POST(request: NextRequest) {
                 new Date().toISOString(),
             })
             .eq("id", userId);
+        }
+        break;
+      }
+
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object as Stripe.Invoice;
+        const customerId =
+          typeof invoice.customer === "string"
+            ? invoice.customer
+            : invoice.customer?.id;
+
+        if (customerId && invoice.billing_reason === "subscription_cycle") {
+          await supabase
+            .from("profiles")
+            .update({
+              generations_used: 0,
+              generations_reset_date: getResetDateIn30Days(),
+            })
+            .eq("stripe_customer_id", customerId);
         }
         break;
       }

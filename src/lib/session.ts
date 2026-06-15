@@ -96,12 +96,12 @@ export function clearCheckoutSession() {
   sessionStorage.removeItem(ROOM_TYPE_KEY);
 }
 
-export type SubscriptionPlan = "weekly" | "monthly" | "annual";
+export type SubscriptionPlan = "monthly" | "yearly";
 
 export function parsePlanValue(
   value: string | null | undefined
 ): SubscriptionPlan {
-  if (value === "weekly" || value === "monthly") return value;
+  if (value === "yearly" || value === "annual") return "yearly";
   return "monthly";
 }
 
@@ -117,23 +117,19 @@ export function clearPlan() {
 
 export function getPlanLabel(plan: SubscriptionPlan): string {
   switch (plan) {
-    case "weekly":
-      return "Hebdomadaire";
     case "monthly":
       return "Mensuel";
-    case "annual":
+    case "yearly":
       return "Annuel";
   }
 }
 
 export function getPlanPrice(plan: SubscriptionPlan): string {
   switch (plan) {
-    case "weekly":
-      return "4,99€/semaine";
     case "monthly":
       return "9,99€/mois";
-    case "annual":
-      return "Annuel";
+    case "yearly":
+      return "49,99€/an";
   }
 }
 
