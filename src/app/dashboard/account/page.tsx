@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/types/database";
 import { isBypassAuthEnabled, getDevBypassUser } from "@/lib/dev-bypass";
 import { MONTHLY_GENERATION_LIMIT, isYearlyPlan } from "@/lib/generation-limits";
+import { LogoutButton } from "@/components/LogoutButton";
 
 type LimitInfo = {
   plan: string;
@@ -286,6 +287,8 @@ export default function AccountPage() {
           Gérer mon abonnement
         </a>
       </div>
+
+      <LogoutButton variant="account" />
     </div>
   );
 }

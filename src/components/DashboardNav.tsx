@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Grid3X3, User, Sparkles } from "lucide-react";
 import { Logo } from "./Logo";
+import { LogoutButton } from "./LogoutButton";
 
 const navItems = [
   { href: "/dashboard/creations", label: "Mes créations", Icon: Grid3X3 },
@@ -23,12 +24,12 @@ export function DashboardNav({ userName }: { userName?: string }) {
 
   return (
     <>
-      <aside className="hidden md:flex flex-col w-64 bg-card shadow-soft min-h-screen p-6 gap-6">
+      <aside className="hidden md:flex flex-col w-64 bg-card shadow-soft min-h-screen p-6">
         <Logo />
         {userName && (
-          <p className="text-sm text-muted truncate">Bonjour, {userName}</p>
+          <p className="text-sm text-muted truncate mt-6">Bonjour, {userName}</p>
         )}
-        <nav className="flex flex-col gap-2">
+        <nav className="flex flex-col gap-2 mt-6 flex-1">
           {navItems.map(({ href, label, Icon }) => {
             const active = isActive(href);
             return (
@@ -48,6 +49,7 @@ export function DashboardNav({ userName }: { userName?: string }) {
             );
           })}
         </nav>
+        <LogoutButton />
       </aside>
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-background flex justify-around py-2 z-50">
