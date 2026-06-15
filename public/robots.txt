@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+Disallow: /upload
+Disallow: /loading
+Disallow: /pricing
+Disallow: /dashboard
+Disallow: /auth
