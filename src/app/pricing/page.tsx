@@ -16,6 +16,7 @@ const UNLOCK_COUNT_KEY = "renove_pricing_unlock_count";
 const UNLOCK_RESET_HOUR = 15;
 
 type PricingPlan = "discovery" | "pro" | "credits_5" | "credits_15";
+type DisplayPlan = "discovery" | "pro";
 
 const discoveryFeatures = [
   "5 générations",
@@ -93,6 +94,7 @@ function setSelectedPlan(plan: PricingPlan) {
 export default function PricingPage() {
   const router = useRouter();
   const captureFunnel = useFunnelCapture();
+  const [selectedPlan, setSelectedPlanState] = useState<DisplayPlan>("pro");
   const [loading, setLoading] = useState(false);
   const [timerEnd, setTimerEnd] = useState<number | null>(null);
   const [remainingMs, setRemainingMs] = useState(0);
@@ -200,160 +202,218 @@ export default function PricingPage() {
           </p>
         </div>
 
-        <div className="flex gap-3 pricing-reveal-item pricing-reveal-delay-4">
-          {/* Découverte */}
-          <div
-            className="flex-1 min-w-0 rounded-2xl bg-white p-4"
+        <div
+          className="relative flex p-1 mb-5 pricing-reveal-item pricing-reveal-delay-3"
+          style={{ backgroundColor: "#EDE8E3", borderRadius: "50px" }}
+        >
+          <button
+            type="button"
+            onClick={() => setSelectedPlanState("discovery")}
+            className="relative flex-1 rounded-[50px] py-2.5 text-sm transition-all"
             style={{
-              border: "2px solid #EDE8E3",
-              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.06)",
+              fontFamily: "var(--font-inter), Inter, sans-serif",
+              fontWeight: selectedPlan === "discovery" ? 700 : 500,
+              color: selectedPlan === "discovery" ? "#1A1A1A" : "#8B7D6B",
+              backgroundColor:
+                selectedPlan === "discovery" ? "#FFFFFF" : "transparent",
+              boxShadow:
+                selectedPlan === "discovery"
+                  ? "0 2px 8px rgba(0, 0, 0, 0.06)"
+                  : "none",
             }}
           >
-            <span
-              className="inline-block rounded-lg px-2 py-1 font-bold mb-2"
-              style={{
-                backgroundColor: "#EDE8E3",
-                color: "#1A1A1A",
-                fontFamily: "var(--font-inter), Inter, sans-serif",
-                fontSize: "9px",
-              }}
-            >
-              SANS ENGAGEMENT
-            </span>
+            Découverte
+          </button>
 
-            <p className="font-hero text-[22px] font-bold text-[#1A1A1A] leading-none">
-              4,90€
-            </p>
-            <p
-              className="mt-1 mb-3"
-              style={{
-                fontFamily: "var(--font-inter), Inter, sans-serif",
-                fontSize: "11px",
-                color: "#8B7D6B",
-              }}
-            >
-              une seule fois
-            </p>
-            <p
-              className="mb-2"
-              style={{
-                fontFamily: "var(--font-inter), Inter, sans-serif",
-                fontSize: "11px",
-                color: "#8B7D6B",
-              }}
-            >
-              5 générations pour découvrir
-            </p>
-
-            <FeatureList items={discoveryFeatures} />
-
-            <button
-              type="button"
-              onClick={() => handleChoosePlan("discovery")}
-              disabled={loading}
-              className="w-full mt-4 font-bold transition-colors disabled:opacity-50"
-              style={{
-                fontFamily: "var(--font-inter), Inter, sans-serif",
-                fontSize: "13px",
-                color: "#A0522D",
-                backgroundColor: "transparent",
-                border: "2px solid #A0522D",
-                borderRadius: "50px",
-                padding: "12px 8px",
-                pointerEvents: loading ? "none" : "auto",
-              }}
-            >
-              <PlanCtaLabel label="Commencer →" />
-            </button>
-          </div>
-
-          {/* Pro */}
-          <div
-            className="relative flex-1 min-w-0 rounded-2xl bg-white p-4"
+          <button
+            type="button"
+            onClick={() => setSelectedPlanState("pro")}
+            className="relative flex-1 rounded-[50px] py-2.5 text-sm transition-all"
             style={{
-              border: "2px solid #A0522D",
-              boxShadow: "0 4px 20px rgba(160, 82, 45, 0.15)",
+              fontFamily: "var(--font-inter), Inter, sans-serif",
+              fontWeight: selectedPlan === "pro" ? 700 : 500,
+              color: selectedPlan === "pro" ? "#1A1A1A" : "#8B7D6B",
+              backgroundColor:
+                selectedPlan === "pro" ? "#FFFFFF" : "transparent",
+              boxShadow:
+                selectedPlan === "pro"
+                  ? "0 2px 8px rgba(0, 0, 0, 0.06)"
+                  : "none",
             }}
           >
+            Pro
             <span
-              className="inline-block rounded-lg px-2 py-1 font-bold text-white mb-2"
+              className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-2 py-0.5"
               style={{
-                backgroundColor: "#A0522D",
                 fontFamily: "var(--font-inter), Inter, sans-serif",
-                fontSize: "9px",
+                fontSize: "10px",
+                fontWeight: 700,
+                color: "#2E7D32",
+                backgroundColor: "#E8F5E9",
               }}
             >
               LE PLUS POPULAIRE
             </span>
+          </button>
+        </div>
 
-            <span
-              className="absolute -top-2 -right-1 rounded-md font-bold text-white"
+        <div className="pricing-reveal-item pricing-reveal-delay-4">
+          {selectedPlan === "discovery" && (
+            <div
+              className="relative rounded-2xl bg-white p-5"
               style={{
-                backgroundColor: "#A0522D",
-                fontFamily: "var(--font-inter), Inter, sans-serif",
-                fontSize: "11px",
-                padding: "4px 8px",
-                transform: "rotate(-6deg)",
+                border: "2px solid #A0522D",
+                boxShadow: "0 4px 16px rgba(0, 0, 0, 0.08)",
               }}
             >
-              -50%
-            </span>
-
-            <div className="flex flex-wrap items-baseline gap-1">
               <span
-                className="line-through"
+                className="inline-block rounded-lg px-2.5 py-1 font-bold mb-3"
+                style={{
+                  backgroundColor: "#EDE8E3",
+                  color: "#1A1A1A",
+                  fontFamily: "var(--font-inter), Inter, sans-serif",
+                  fontSize: "11px",
+                }}
+              >
+                SANS ENGAGEMENT
+              </span>
+
+              <div className="mt-2 flex flex-wrap items-baseline gap-2">
+                <span className="font-hero text-[38px] font-bold text-[#1A1A1A] leading-none">
+                  4,90€
+                </span>
+                <span
+                  style={{
+                    fontFamily: "var(--font-inter), Inter, sans-serif",
+                    fontSize: "14px",
+                    color: "#8B7D6B",
+                  }}
+                >
+                  une seule fois
+                </span>
+              </div>
+              <p
+                className="mt-2"
                 style={{
                   fontFamily: "var(--font-inter), Inter, sans-serif",
-                  fontSize: "10px",
+                  fontSize: "13px",
                   color: "#8B7D6B",
                 }}
               >
-                25,99€
-              </span>
-              <span className="font-hero text-[22px] font-bold text-[#1A1A1A] leading-none">
-                12,99€
-              </span>
+                5 générations pour découvrir
+              </p>
+              <div className="my-4 h-px bg-[#F0EBE5]" />
+              <FeatureList items={discoveryFeatures} />
+
+              <button
+                type="button"
+                onClick={() => handleChoosePlan("discovery")}
+                disabled={loading}
+                className="w-full mt-5 font-bold transition-colors disabled:opacity-50"
+                style={{
+                  fontFamily: "var(--font-inter), Inter, sans-serif",
+                  fontSize: "18px",
+                  color: "#A0522D",
+                  backgroundColor: "transparent",
+                  border: "2px solid #A0522D",
+                  borderRadius: "50px",
+                  padding: "18px",
+                  pointerEvents: loading ? "none" : "auto",
+                }}
+              >
+                <PlanCtaLabel label="Commencer →" />
+              </button>
             </div>
-            <p
-              className="mt-1 mb-3"
-              style={{
-                fontFamily: "var(--font-inter), Inter, sans-serif",
-                fontSize: "11px",
-                color: "#8B7D6B",
-              }}
-            >
-              /mois
-            </p>
-            <p
-              className="mb-2"
-              style={{
-                fontFamily: "var(--font-inter), Inter, sans-serif",
-                fontSize: "11px",
-                color: "#8B7D6B",
-              }}
-            >
-              20 générations par mois
-            </p>
+          )}
 
-            <FeatureList items={proFeatures} />
-
-            <button
-              type="button"
-              onClick={() => handleChoosePlan("pro")}
-              disabled={loading}
-              className="pricing-glow-cta w-full mt-4 text-white font-bold transition-colors disabled:opacity-50"
+          {selectedPlan === "pro" && (
+            <div
+              className="relative rounded-2xl bg-white p-5"
               style={{
-                fontFamily: "var(--font-inter), Inter, sans-serif",
-                fontSize: "13px",
-                backgroundColor: "#A0522D",
-                borderRadius: "50px",
-                padding: "12px 8px",
-                pointerEvents: loading ? "none" : "auto",
+                border: "2px solid #A0522D",
+                boxShadow: "0 4px 20px rgba(160, 82, 45, 0.15)",
               }}
             >
-              <PlanCtaLabel label="Choisir le Pro →" />
-            </button>
-          </div>
+              <span
+                className="inline-block rounded-lg px-2.5 py-1 font-bold text-white mb-3"
+                style={{
+                  backgroundColor: "#A0522D",
+                  fontFamily: "var(--font-inter), Inter, sans-serif",
+                  fontSize: "11px",
+                }}
+              >
+                LE PLUS POPULAIRE
+              </span>
+
+              <span
+                className="absolute -top-3 right-4 z-10 rounded-lg font-bold text-white"
+                style={{
+                  backgroundColor: "#A0522D",
+                  fontFamily: "var(--font-inter), Inter, sans-serif",
+                  fontSize: "18px",
+                  padding: "10px 16px",
+                  transform: "rotate(-6deg)",
+                  boxShadow: "0 4px 12px rgba(160, 82, 45, 0.4)",
+                }}
+              >
+                -50%
+              </span>
+
+              <div className="mt-2 flex flex-wrap items-baseline gap-2">
+                <span
+                  className="line-through"
+                  style={{
+                    fontFamily: "var(--font-inter), Inter, sans-serif",
+                    fontSize: "14px",
+                    color: "#8B7D6B",
+                  }}
+                >
+                  25,99€
+                </span>
+                <span className="font-hero text-[38px] font-bold text-[#1A1A1A] leading-none">
+                  12,99€
+                </span>
+                <span
+                  style={{
+                    fontFamily: "var(--font-inter), Inter, sans-serif",
+                    fontSize: "14px",
+                    color: "#8B7D6B",
+                  }}
+                >
+                  /mois
+                </span>
+              </div>
+              <p
+                className="mt-2"
+                style={{
+                  fontFamily: "var(--font-inter), Inter, sans-serif",
+                  fontSize: "13px",
+                  color: "#8B7D6B",
+                }}
+              >
+                20 générations par mois
+              </p>
+              <div className="my-4 h-px bg-[#F0EBE5]" />
+              <FeatureList items={proFeatures} />
+
+              <button
+                type="button"
+                onClick={() => handleChoosePlan("pro")}
+                disabled={loading}
+                className="pricing-glow-cta w-full mt-5 text-white font-bold transition-colors disabled:opacity-50"
+                style={{
+                  fontFamily: "var(--font-inter), Inter, sans-serif",
+                  fontSize: "18px",
+                  backgroundColor: "#A0522D",
+                  borderRadius: "50px",
+                  padding: "20px",
+                  pointerEvents: loading ? "none" : "auto",
+                }}
+              >
+                <PlanCtaLabel label="Choisir le Pro →" />
+              </button>
+            </div>
+          )}
         </div>
 
         {isPro && (
