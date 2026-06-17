@@ -10,7 +10,7 @@ import { getSupabaseConfigStatus } from "@/lib/supabase/config";
 import { uploadImageToStorage } from "@/lib/supabase/storage";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { refreshCreditsIfDue } from "@/lib/credits-activation";
-import { canGenerateWithCredits, shouldDebitCredits } from "@/lib/credits";
+import { canGenerateWithCredits } from "@/lib/credits";
 
 async function getProfileWithCredits(
   serviceClient: Awaited<ReturnType<typeof createServiceClient>>,
@@ -108,15 +108,6 @@ export async function POST(request: NextRequest) {
 
     const fullPrompt = buildGenerationPrompt(style, customPrompt);
 
-    const debitCredit = async () => {
-      if (!shouldDebitCredits(profile.subscription_plan)) return;
-
-      await serviceClient
-        .from("profiles")
-        .update({ credits_balance: (profile.credits_balance ?? 0) - 1 })
-        .eq("id", user.id);
-    };
-
     if (isFalConfigured()) {
       try {
         const generatedUrl = await generateWithFal(
@@ -124,7 +115,6 @@ export async function POST(request: NextRequest) {
           style,
           customPrompt
         );
-        await debitCredit();
         return NextResponse.json({
           generatedUrl,
           style,

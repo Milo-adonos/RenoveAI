@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { persistGeneratedImageFromUrl } from "@/lib/supabase/storage";
-import { canGenerateWithCredits, shouldDebitCredits } from "@/lib/credits";
+import { canGenerateWithCredits } from "@/lib/credits";
 import { refreshCreditsIfDue } from "@/lib/credits-activation";
+import { debitOneCredit } from "@/lib/debit-credit";
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,7 +22,6 @@ export async function POST(request: NextRequest) {
       style,
       customPrompt,
       originalPath,
-      asyncCompletion,
     } = await request.json();
 
     if (!originalUrl || !generatedUrl) {
@@ -110,11 +110,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    if (asyncCompletion && shouldDebitCredits(profile.subscription_plan)) {
-      await serviceClient
-        .from("profiles")
-        .update({ credits_balance: creditsBalance - 1 })
-        .eq("id", user.id);
+    const debited = await debitOneCredit(
+      serviceClient,
+      user.id,
+      profile.subscription_plan
+    );
+
+    if (!debited) {
+      await serviceClient.from("generations").delete().eq("id", data.id);
+      return NextResponse.json({ error: "no_credits" }, { status: 403 });
     }
 
     return NextResponse.json({ generation: data });

@@ -242,15 +242,18 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
             style: input.style,
             customPrompt: input.customPrompt,
             originalPath: input.originalPath,
-            asyncCompletion: !data.sync,
           }),
         })
           .then(async (saveRes) => {
             if (!saveRes.ok) {
+              const body = await saveRes.text();
               console.error(
                 "[dashboard] Sauvegarde en arrière-plan échouée:",
-                await saveRes.text()
+                body
               );
+              setOptimisticGeneration(null);
+              setSuccessToast(false);
+              setGeneratingToast(false);
               return;
             }
             setOptimisticGeneration(null);

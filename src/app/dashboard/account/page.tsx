@@ -108,6 +108,13 @@ export default function AccountPage() {
     window.location.href = `/api/stripe/checkout?plan=${plan}`;
   }
 
+  async function handleUpgradeToPro() {
+    setCheckoutLoading(true);
+    localStorage.setItem("selectedPlan", "pro");
+    document.cookie = `selectedPlan=pro; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+    window.location.href = `/api/stripe/checkout?plan=pro`;
+  }
+
   if (loading || !profile) {
     return <div className="animate-pulse text-muted">Chargement...</div>;
   }
@@ -131,6 +138,8 @@ export default function AccountPage() {
     credits_balance: creditsBalance,
   });
   const noCredits = limit?.canGenerate === false || (!isYearly && creditsBalance <= 0);
+  const canBuyCredits = isPro || isMonthly || isYearly;
+  const canUpgrade = isDiscovery || isMonthly;
 
   async function saveName() {
     if (!profile) return;
@@ -350,6 +359,36 @@ export default function AccountPage() {
           </div>
         )}
       </div>
+
+      {isActive && (canUpgrade || canBuyCredits) && (
+        <div className="card mb-6">
+          <h2 className="font-semibold mb-4">Besoin de plus ?</h2>
+          <div className="flex flex-col gap-3">
+            {canUpgrade && (
+              <button
+                type="button"
+                onClick={handleUpgradeToPro}
+                disabled={checkoutLoading}
+                className="w-full bg-accent hover:bg-accent-hover text-white font-semibold text-sm py-3 px-4 rounded-xl transition-colors disabled:opacity-50"
+              >
+                {isDiscovery
+                  ? "Passer au Pro — 12,99€/mois"
+                  : "Passer au Pro — 12,99€/mois"}
+              </button>
+            )}
+            {canBuyCredits && (
+              <button
+                type="button"
+                onClick={() => setCreditsModalOpen(true)}
+                disabled={checkoutLoading}
+                className="w-full text-[13px] text-[#8B7D6B] border border-[#8B7D6B] px-4 py-3 rounded-lg hover:bg-background transition-colors disabled:opacity-50"
+              >
+                Racheter des crédits →
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {(isPro || isMonthly || isYearly) && (
         <div className="border-t border-muted/20 pt-6">
