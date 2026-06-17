@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { SubscriptionPlan } from "@/lib/session";
 import {
   formatPricingTimer,
   getPricingTimerEnd,
@@ -11,25 +10,26 @@ import {
 import { FUNNEL } from "@/lib/funnel-events";
 import { useFunnelCapture } from "@/hooks/useFunnelCapture";
 import { createClient } from "@/lib/supabase/client";
+import { CreditsPurchaseModal } from "@/components/CreditsPurchaseModal";
 
 const UNLOCK_COUNT_KEY = "renove_pricing_unlock_count";
 const UNLOCK_RESET_HOUR = 15;
 
-const yearlyFeatures = [
-  "Générations illimitées",
+type PricingPlan = "discovery" | "pro" | "credits_5" | "credits_15";
+
+const discoveryFeatures = [
+  "5 générations",
+  "Téléchargement HD",
+  "19 styles disponibles",
+  "Sans abonnement",
+];
+
+const proFeatures = [
+  "20 générations/mois",
   "Téléchargement HD",
   "19 styles disponibles",
   "Historique complet",
   "Support prioritaire",
-  "Accès en avant-première aux nouveaux styles",
-];
-
-const monthlyFeatures = [
-  "30 générations par mois",
-  "Téléchargement HD",
-  "19 styles disponibles",
-  "Historique 30 jours",
-  "Support standard",
 ];
 
 function FeatureList({ items }: { items: string[] }) {
@@ -85,7 +85,7 @@ function formatUnlockCount(count: number): string {
   return new Intl.NumberFormat("fr-FR").format(count);
 }
 
-function setSelectedPlan(plan: SubscriptionPlan) {
+function setSelectedPlan(plan: PricingPlan) {
   localStorage.setItem("selectedPlan", plan);
   document.cookie = `selectedPlan=${plan}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
 }
@@ -93,17 +93,36 @@ function setSelectedPlan(plan: SubscriptionPlan) {
 export default function PricingPage() {
   const router = useRouter();
   const captureFunnel = useFunnelCapture();
-  const [selectedPlan, setSelectedPlanState] = useState<SubscriptionPlan>("monthly");
   const [loading, setLoading] = useState(false);
   const [timerEnd, setTimerEnd] = useState<number | null>(null);
   const [remainingMs, setRemainingMs] = useState(0);
   const [unlockCount, setUnlockCount] = useState<number | null>(null);
+  const [isPro, setIsPro] = useState(false);
+  const [creditsModalOpen, setCreditsModalOpen] = useState(false);
 
   useEffect(() => {
     const end = getPricingTimerEnd();
     setTimerEnd(end);
     setRemainingMs(end - Date.now());
     setUnlockCount(getDailyUnlockCount());
+
+    async function loadProfile() {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("subscription_plan")
+        .eq("id", user.id)
+        .single();
+
+      setIsPro(profile?.subscription_plan === "pro");
+    }
+
+    loadProfile();
   }, []);
 
   useEffect(() => {
@@ -123,13 +142,12 @@ export default function PricingPage() {
     return formatUnlockCount(unlockCount);
   }, [unlockCount]);
 
-  async function handleChoosePlan(plan: SubscriptionPlan) {
+  async function handleChoosePlan(plan: PricingPlan) {
     if (loading) return;
     setLoading(true);
 
     captureFunnel(FUNNEL.unlockClicked, { plan });
     captureFunnel(FUNNEL.planSelected, { plan });
-    setSelectedPlanState(plan);
     setSelectedPlan(plan);
 
     const supabase = createClient();
@@ -182,233 +200,181 @@ export default function PricingPage() {
           </p>
         </div>
 
-        <div
-          className="relative flex p-1 mb-5 pricing-reveal-item pricing-reveal-delay-3"
-          style={{ backgroundColor: "#EDE8E3", borderRadius: "50px" }}
-        >
-          <button
-            type="button"
-            onClick={() => setSelectedPlanState("monthly")}
-            className="relative flex-1 rounded-[50px] py-2.5 text-sm transition-all"
+        <div className="flex gap-3 pricing-reveal-item pricing-reveal-delay-4">
+          {/* Découverte */}
+          <div
+            className="flex-1 min-w-0 rounded-2xl bg-white p-4"
             style={{
-              fontFamily: "var(--font-inter), Inter, sans-serif",
-              fontWeight: selectedPlan === "monthly" ? 700 : 500,
-              color: selectedPlan === "monthly" ? "#1A1A1A" : "#8B7D6B",
-              backgroundColor:
-                selectedPlan === "monthly" ? "#FFFFFF" : "transparent",
-              boxShadow:
-                selectedPlan === "monthly"
-                  ? "0 2px 8px rgba(0, 0, 0, 0.06)"
-                  : "none",
+              border: "2px solid #EDE8E3",
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.06)",
             }}
           >
-            Mensuel
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setSelectedPlanState("yearly")}
-            className="relative flex-1 rounded-[50px] py-2.5 text-sm transition-all"
-            style={{
-              fontFamily: "var(--font-inter), Inter, sans-serif",
-              fontWeight: selectedPlan === "yearly" ? 700 : 500,
-              color: selectedPlan === "yearly" ? "#1A1A1A" : "#8B7D6B",
-              backgroundColor:
-                selectedPlan === "yearly" ? "#FFFFFF" : "transparent",
-              boxShadow:
-                selectedPlan === "yearly"
-                  ? "0 2px 8px rgba(0, 0, 0, 0.06)"
-                  : "none",
-            }}
-          >
-            Annuel
             <span
-              className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-2 py-0.5"
+              className="inline-block rounded-lg px-2 py-1 font-bold mb-2"
               style={{
+                backgroundColor: "#EDE8E3",
+                color: "#1A1A1A",
                 fontFamily: "var(--font-inter), Inter, sans-serif",
-                fontSize: "10px",
-                fontWeight: 700,
-                color: "#2E7D32",
-                backgroundColor: "#E8F5E9",
+                fontSize: "9px",
               }}
             >
-              MOITIÉ PRIX 🎁
+              SANS ENGAGEMENT
             </span>
-          </button>
-        </div>
 
-        <div className="pricing-reveal-item pricing-reveal-delay-4">
-          {selectedPlan === "yearly" && (
+            <p className="font-hero text-[22px] font-bold text-[#1A1A1A] leading-none">
+              4,90€
+            </p>
+            <p
+              className="mt-1 mb-3"
+              style={{
+                fontFamily: "var(--font-inter), Inter, sans-serif",
+                fontSize: "11px",
+                color: "#8B7D6B",
+              }}
+            >
+              une seule fois
+            </p>
+            <p
+              className="mb-2"
+              style={{
+                fontFamily: "var(--font-inter), Inter, sans-serif",
+                fontSize: "11px",
+                color: "#8B7D6B",
+              }}
+            >
+              5 générations pour découvrir
+            </p>
+
+            <FeatureList items={discoveryFeatures} />
+
+            <button
+              type="button"
+              onClick={() => handleChoosePlan("discovery")}
+              disabled={loading}
+              className="w-full mt-4 font-bold transition-colors disabled:opacity-50"
+              style={{
+                fontFamily: "var(--font-inter), Inter, sans-serif",
+                fontSize: "13px",
+                color: "#A0522D",
+                backgroundColor: "transparent",
+                border: "2px solid #A0522D",
+                borderRadius: "50px",
+                padding: "12px 8px",
+                pointerEvents: loading ? "none" : "auto",
+              }}
+            >
+              <PlanCtaLabel label="Commencer →" />
+            </button>
+          </div>
+
+          {/* Pro */}
           <div
-            className="relative rounded-2xl bg-white p-5"
+            className="relative flex-1 min-w-0 rounded-2xl bg-white p-4"
             style={{
               border: "2px solid #A0522D",
               boxShadow: "0 4px 20px rgba(160, 82, 45, 0.15)",
             }}
           >
             <span
-              className="inline-block rounded-lg px-2.5 py-1 font-bold text-white mb-3"
+              className="inline-block rounded-lg px-2 py-1 font-bold text-white mb-2"
               style={{
                 backgroundColor: "#A0522D",
                 fontFamily: "var(--font-inter), Inter, sans-serif",
-                fontSize: "11px",
-              }}
-            >
-              MEILLEURE VALEUR 🎁
-            </span>
-
-            <span
-              className="absolute -top-3 right-4 z-10 rounded-lg font-bold text-white"
-              style={{
-                backgroundColor: "#A0522D",
-                fontFamily: "var(--font-inter), Inter, sans-serif",
-                fontSize: "18px",
-                padding: "10px 16px",
-                transform: "rotate(-6deg)",
-                boxShadow: "0 4px 12px rgba(160, 82, 45, 0.4)",
-              }}
-            >
-              -50%
-            </span>
-
-            <div className="mt-2 flex flex-wrap items-baseline gap-2">
-              <span
-                className="line-through"
-                style={{
-                  fontFamily: "var(--font-inter), Inter, sans-serif",
-                  fontSize: "14px",
-                  color: "#8B7D6B",
-                }}
-              >
-                99,90€
-              </span>
-              <span className="font-hero text-[38px] font-bold text-[#1A1A1A] leading-none">
-                49,90€
-              </span>
-              <span
-                style={{
-                  fontFamily: "var(--font-inter), Inter, sans-serif",
-                  fontSize: "14px",
-                  color: "#8B7D6B",
-                }}
-              >
-                /an
-              </span>
-            </div>
-            <p
-              className="mt-2"
-              style={{
-                fontFamily: "var(--font-inter), Inter, sans-serif",
-                fontSize: "13px",
-                color: "#8B7D6B",
-              }}
-            >
-              soit 4,16€/mois — 2 mois offerts
-            </p>
-            <div className="my-4 h-px bg-[#F0EBE5]" />
-            <FeatureList items={yearlyFeatures} />
-
-            <button
-              type="button"
-              onClick={() => handleChoosePlan("yearly")}
-              disabled={loading}
-              className="pricing-glow-cta w-full mt-5 text-white font-bold transition-colors disabled:opacity-50"
-              style={{
-                fontFamily: "var(--font-inter), Inter, sans-serif",
-                fontSize: "18px",
-                backgroundColor: "#A0522D",
-                borderRadius: "50px",
-                padding: "20px",
-                pointerEvents: loading ? "none" : "auto",
-              }}
-            >
-              <PlanCtaLabel label="Choisir l'annuel →" />
-            </button>
-          </div>
-          )}
-
-          {selectedPlan === "monthly" && (
-          <div
-            className="relative rounded-2xl bg-white p-5"
-            style={{
-              border: "2px solid #A0522D",
-              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.08)",
-            }}
-          >
-            <span
-              className="inline-block rounded-lg px-2.5 py-1 font-bold mb-3"
-              style={{
-                backgroundColor: "#EDE8E3",
-                color: "#1A1A1A",
-                fontFamily: "var(--font-inter), Inter, sans-serif",
-                fontSize: "11px",
+                fontSize: "9px",
               }}
             >
               LE PLUS POPULAIRE
             </span>
 
             <span
-              className="absolute -top-3 right-4 z-10 rounded-lg font-bold text-white"
+              className="absolute -top-2 -right-1 rounded-md font-bold text-white"
               style={{
                 backgroundColor: "#A0522D",
                 fontFamily: "var(--font-inter), Inter, sans-serif",
-                fontSize: "18px",
-                padding: "10px 16px",
+                fontSize: "11px",
+                padding: "4px 8px",
                 transform: "rotate(-6deg)",
-                boxShadow: "0 4px 12px rgba(160, 82, 45, 0.4)",
               }}
             >
               -50%
             </span>
 
-            <div className="mt-2 flex flex-wrap items-baseline gap-2">
+            <div className="flex flex-wrap items-baseline gap-1">
               <span
                 className="line-through"
                 style={{
                   fontFamily: "var(--font-inter), Inter, sans-serif",
-                  fontSize: "14px",
+                  fontSize: "10px",
                   color: "#8B7D6B",
                 }}
               >
-                19,99€
+                25,99€
               </span>
-              <span className="font-hero text-[38px] font-bold text-[#1A1A1A] leading-none">
-                9,99€
-              </span>
-              <span
-                style={{
-                  fontFamily: "var(--font-inter), Inter, sans-serif",
-                  fontSize: "14px",
-                  color: "#8B7D6B",
-                }}
-              >
-                /mois
+              <span className="font-hero text-[22px] font-bold text-[#1A1A1A] leading-none">
+                12,99€
               </span>
             </div>
-            <div className="my-4 h-px bg-[#F0EBE5]" />
-            <FeatureList items={monthlyFeatures} />
+            <p
+              className="mt-1 mb-3"
+              style={{
+                fontFamily: "var(--font-inter), Inter, sans-serif",
+                fontSize: "11px",
+                color: "#8B7D6B",
+              }}
+            >
+              /mois
+            </p>
+            <p
+              className="mb-2"
+              style={{
+                fontFamily: "var(--font-inter), Inter, sans-serif",
+                fontSize: "11px",
+                color: "#8B7D6B",
+              }}
+            >
+              20 générations par mois
+            </p>
+
+            <FeatureList items={proFeatures} />
 
             <button
               type="button"
-              onClick={() => handleChoosePlan("monthly")}
+              onClick={() => handleChoosePlan("pro")}
               disabled={loading}
-              className="w-full mt-5 font-bold transition-colors disabled:opacity-50"
+              className="pricing-glow-cta w-full mt-4 text-white font-bold transition-colors disabled:opacity-50"
               style={{
                 fontFamily: "var(--font-inter), Inter, sans-serif",
-                fontSize: "18px",
-                color: "#A0522D",
-                backgroundColor: "transparent",
-                border: "2px solid #A0522D",
+                fontSize: "13px",
+                backgroundColor: "#A0522D",
                 borderRadius: "50px",
-                padding: "18px",
+                padding: "12px 8px",
                 pointerEvents: loading ? "none" : "auto",
               }}
             >
-              <PlanCtaLabel label="Choisir le mensuel →" />
+              <PlanCtaLabel label="Choisir le Pro →" />
             </button>
           </div>
-          )}
         </div>
+
+        {isPro && (
+          <p
+            className="text-center mt-4 pricing-reveal-item pricing-reveal-delay-5"
+            style={{
+              fontFamily: "var(--font-inter), Inter, sans-serif",
+              fontSize: "12px",
+              color: "#8B7D6B",
+            }}
+          >
+            Abonné Pro et crédits épuisés ?{" "}
+            <button
+              type="button"
+              onClick={() => setCreditsModalOpen(true)}
+              className="text-[#A0522D] font-semibold underline-offset-2 hover:underline"
+            >
+              Racheter des crédits →
+            </button>
+          </p>
+        )}
 
         <div className="mt-4 space-y-3 pricing-reveal-item pricing-reveal-delay-5">
           <div
@@ -499,6 +465,16 @@ export default function PricingPage() {
           </p>
         </div>
       </div>
+
+      <CreditsPurchaseModal
+        open={creditsModalOpen}
+        onClose={() => setCreditsModalOpen(false)}
+        loading={loading}
+        onSelectPlan={(plan) => {
+          setCreditsModalOpen(false);
+          handleChoosePlan(plan);
+        }}
+      />
     </main>
   );
 }

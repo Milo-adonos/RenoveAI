@@ -10,7 +10,7 @@ export default function GoToStripe() {
       const checkout = getCheckoutSession();
 
       if (checkout) {
-        const plan = localStorage.getItem("selectedPlan") || "monthly";
+        const plan = localStorage.getItem("selectedPlan") || "discovery";
         window.location.href = `/api/stripe/checkout?plan=${plan}`;
         return;
       }

@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { persistGeneratedImageFromUrl } from "@/lib/supabase/storage";
-import {
-  canGenerateWithProfile,
-  getNextCalendarMonthStart,
-  isMonthlyPlan,
-  MONTHLY_GENERATION_LIMIT,
-  shouldResetMonthlyGenerations,
-} from "@/lib/generation-limits";
+import { canGenerateWithCredits } from "@/lib/credits";
+import { refreshProCreditsIfDue } from "@/lib/credits-activation";
 
 export async function POST(request: NextRequest) {
   try {
@@ -62,7 +57,7 @@ export async function POST(request: NextRequest) {
     const { data: profile } = await serviceClient
       .from("profiles")
       .select(
-        "subscription_plan, subscription_status, generations_used, generations_reset_date"
+        "credits_balance, subscription_status, subscription_plan, credits_reset_date"
       )
       .eq("id", user.id)
       .single();
@@ -71,28 +66,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "no_subscription" }, { status: 403 });
     }
 
-    let used = profile.generations_used ?? 0;
+    const creditsBalance = await refreshProCreditsIfDue(
+      serviceClient,
+      user.id,
+      profile
+    );
 
-    if (shouldResetMonthlyGenerations(profile.generations_reset_date)) {
-      used = 0;
-      await serviceClient
-        .from("profiles")
-        .update({
-          generations_used: 0,
-          generations_reset_date: getNextCalendarMonthStart().toISOString(),
-        })
-        .eq("id", user.id);
-    }
+    const enrichedProfile = { ...profile, credits_balance: creditsBalance };
 
-    if (
-      isMonthlyPlan(profile.subscription_plan) &&
-      used >= MONTHLY_GENERATION_LIMIT
-    ) {
-      return NextResponse.json({ error: "limit_reached" }, { status: 403 });
-    }
-
-    if (!canGenerateWithProfile(profile, used)) {
-      return NextResponse.json({ error: "limit_reached" }, { status: 403 });
+    if (!canGenerateWithCredits(enrichedProfile)) {
+      return NextResponse.json({ error: "no_credits" }, { status: 403 });
     }
 
     let finalGeneratedUrl = generatedUrl;
@@ -127,10 +110,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    if (isMonthlyPlan(profile.subscription_plan) && asyncCompletion) {
+    if (asyncCompletion) {
       await serviceClient
         .from("profiles")
-        .update({ generations_used: used + 1 })
+        .update({ credits_balance: creditsBalance - 1 })
         .eq("id", user.id);
     }
 

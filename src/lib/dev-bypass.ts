@@ -2,14 +2,14 @@ export type DevBypassUser = {
   id: string;
   email: string;
   subscription_status: "active";
-  subscription_plan: "monthly" | "yearly";
+  subscription_plan: "discovery" | "pro";
 };
 
 export function isBypassAuthEnabled(): boolean {
   return process.env.NEXT_PUBLIC_BYPASS_AUTH === "true";
 }
 
-export function saveDevBypassUser(plan: "monthly" | "yearly"): void {
+export function saveDevBypassUser(plan: "discovery" | "pro"): void {
   if (typeof window === "undefined") return;
 
   const user: DevBypassUser = {

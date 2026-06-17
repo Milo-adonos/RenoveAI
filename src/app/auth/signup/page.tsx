@@ -9,7 +9,7 @@ function getSelectedPlanFromCookie(): string | null {
   if (typeof document === "undefined") return null;
   const match = document.cookie.match(/(?:^|; )selectedPlan=([^;]*)/);
   const plan = match?.[1];
-  if (plan === "weekly" || plan === "monthly" || plan === "yearly") return plan;
+  if (plan === "weekly" || plan === "monthly" || plan === "yearly" || plan === "discovery" || plan === "pro" || plan === "credits_5" || plan === "credits_15") return plan;
   return null;
 }
 
@@ -19,7 +19,7 @@ function getStripeCheckoutUrl(plan: string): string {
 
 function getPostSignupRedirect(): string {
   if (getCheckoutSession()) {
-    const selectedPlan = localStorage.getItem("selectedPlan") || "monthly";
+    const selectedPlan = localStorage.getItem("selectedPlan") || "discovery";
     return getStripeCheckoutUrl(selectedPlan);
   }
   return "/upload";

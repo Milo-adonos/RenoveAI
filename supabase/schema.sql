@@ -6,13 +6,11 @@ create table if not exists profiles (
   avatar_url text,
   stripe_customer_id text,
   subscription_status text default 'inactive',
-  subscription_plan text,
+  subscription_plan text default 'inactive',
   subscription_end_date timestamptz,
   trial_end_date timestamptz,
-  generations_used integer default 0,
-  generations_reset_date timestamptz,
-  weekly_generations_used integer default 0,
-  weekly_reset_date timestamptz,
+  credits_balance integer default 0,
+  credits_reset_date timestamptz,
   created_at timestamptz default now()
 );
 

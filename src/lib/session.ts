@@ -96,17 +96,28 @@ export function clearCheckoutSession() {
   sessionStorage.removeItem(ROOM_TYPE_KEY);
 }
 
-export type SubscriptionPlan = "monthly" | "yearly";
+export type SubscriptionPlan =
+  | "discovery"
+  | "pro"
+  | "credits_5"
+  | "credits_15";
 
 export function parsePlanValue(
   value: string | null | undefined
 ): SubscriptionPlan {
-  if (value === "yearly" || value === "annual") return "yearly";
-  return "monthly";
+  if (
+    value === "discovery" ||
+    value === "pro" ||
+    value === "credits_5" ||
+    value === "credits_15"
+  ) {
+    return value;
+  }
+  return "discovery";
 }
 
 export function getPlan(): SubscriptionPlan {
-  if (typeof window === "undefined") return "monthly";
+  if (typeof window === "undefined") return "discovery";
   return parsePlanValue(localStorage.getItem(PLAN_KEY));
 }
 
@@ -117,19 +128,27 @@ export function clearPlan() {
 
 export function getPlanLabel(plan: SubscriptionPlan): string {
   switch (plan) {
-    case "monthly":
-      return "Mensuel";
-    case "yearly":
-      return "Annuel";
+    case "discovery":
+      return "Découverte";
+    case "pro":
+      return "Pro";
+    case "credits_5":
+      return "5 crédits";
+    case "credits_15":
+      return "15 crédits";
   }
 }
 
 export function getPlanPrice(plan: SubscriptionPlan): string {
   switch (plan) {
-    case "monthly":
-      return "9,99€/mois";
-    case "yearly":
-      return "49,99€/an";
+    case "discovery":
+      return "4,90€";
+    case "pro":
+      return "12,99€/mois";
+    case "credits_5":
+      return "2,90€";
+    case "credits_15":
+      return "6,90€";
   }
 }
 

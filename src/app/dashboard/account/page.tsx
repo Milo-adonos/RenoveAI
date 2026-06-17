@@ -5,14 +5,21 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/types/database";
 import { isBypassAuthEnabled, getDevBypassUser } from "@/lib/dev-bypass";
-import { MONTHLY_GENERATION_LIMIT, isYearlyPlan } from "@/lib/generation-limits";
+import {
+  DISCOVERY_CREDITS,
+  PRO_CREDITS,
+  getCreditsProgress,
+  getCreditsUsed,
+  getPlanCreditLimit,
+} from "@/lib/credits";
 import { LogoutButton } from "@/components/LogoutButton";
+import { CreditsPurchaseModal } from "@/components/CreditsPurchaseModal";
 
 type LimitInfo = {
   plan: string;
-  generationsUsed: number;
-  generationsRemaining: number | null;
-  resetDate: string;
+  creditsBalance: number;
+  creditsLimit: number;
+  resetDate: string | null;
 };
 
 export default function AccountPage() {
@@ -23,6 +30,8 @@ export default function AccountPage() {
   const [editName, setEditName] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [nameError, setNameError] = useState("");
+  const [creditsModalOpen, setCreditsModalOpen] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -35,20 +44,18 @@ export default function AccountPage() {
           avatar_url: null,
           stripe_customer_id: null,
           subscription_status: devUser?.subscription_status || "active",
-          subscription_plan: devUser?.subscription_plan || "yearly",
+          subscription_plan: devUser?.subscription_plan || "pro",
           subscription_end_date: null,
           trial_end_date: null,
-          generations_used: 0,
-          generations_reset_date: null,
-          weekly_generations_used: 0,
-          weekly_reset_date: null,
+          credits_balance: PRO_CREDITS,
+          credits_reset_date: null,
           created_at: new Date().toISOString(),
         });
         setLimit({
-          plan: devUser?.subscription_plan || "yearly",
-          generationsUsed: 0,
-          generationsRemaining: null,
-          resetDate: new Date().toISOString(),
+          plan: devUser?.subscription_plan || "pro",
+          creditsBalance: PRO_CREDITS,
+          creditsLimit: PRO_CREDITS,
+          resetDate: null,
         });
         setLoading(false);
         return;
@@ -74,8 +81,8 @@ export default function AccountPage() {
         const limitData = await limitRes.json();
         setLimit({
           plan: limitData.plan,
-          generationsUsed: limitData.generationsUsed,
-          generationsRemaining: limitData.generationsRemaining,
+          creditsBalance: limitData.creditsBalance,
+          creditsLimit: limitData.creditsLimit,
           resetDate: limitData.resetDate,
         });
       }
@@ -86,17 +93,34 @@ export default function AccountPage() {
     load();
   }, []);
 
+  async function handleCreditsPurchase(plan: "credits_5" | "credits_15") {
+    setCheckoutLoading(true);
+    localStorage.setItem("selectedPlan", plan);
+    document.cookie = `selectedPlan=${plan}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
+    window.location.href = `/api/stripe/checkout?plan=${plan}`;
+  }
+
   if (loading || !profile) {
     return <div className="animate-pulse text-muted">Chargement...</div>;
   }
 
   const isActive = profile.subscription_status === "active";
-  const isYearly = isYearlyPlan(profile.subscription_plan);
+  const plan = profile.subscription_plan || "inactive";
+  const isDiscovery = plan === "discovery";
+  const isPro = plan === "pro";
   const firstName = profile.full_name?.split(" ")[0] || "Utilisateur";
   const initial = firstName[0]?.toUpperCase() || "?";
-  const generationsUsed = limit?.generationsUsed ?? profile.generations_used ?? 0;
-  const progressPct = (generationsUsed / MONTHLY_GENERATION_LIMIT) * 100;
-  const limitReached = !isYearly && generationsUsed >= MONTHLY_GENERATION_LIMIT;
+  const creditsBalance = limit?.creditsBalance ?? profile.credits_balance ?? 0;
+  const creditsLimit = limit?.creditsLimit ?? getPlanCreditLimit(plan);
+  const creditsUsed = getCreditsUsed({
+    ...profile,
+    credits_balance: creditsBalance,
+  });
+  const progressPct = getCreditsProgress({
+    ...profile,
+    credits_balance: creditsBalance,
+  });
+  const noCredits = creditsBalance <= 0;
 
   async function saveName() {
     if (!profile) return;
@@ -145,12 +169,11 @@ export default function AccountPage() {
     setNameError("");
   }
 
-  const resetLabel = limit?.resetDate
-    ? new Date(limit.resetDate).toLocaleDateString("fr-FR", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      })
+  const resetLabel = (limit?.resetDate || profile.credits_reset_date)
+    ? new Date(limit?.resetDate || profile.credits_reset_date!).toLocaleDateString(
+        "fr-FR",
+        { day: "numeric", month: "long", year: "numeric" }
+      )
     : null;
 
   return (
@@ -217,9 +240,11 @@ export default function AccountPage() {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className="bg-accent text-white text-xs font-semibold px-3 py-1 rounded-full">
-              {isYearly
-                ? "Annuel — 49,99€/an"
-                : "Mensuel — 9,99€/mois"}
+              {isDiscovery
+                ? "Découverte — 4,90€"
+                : isPro
+                  ? "Pro — 12,99€/mois"
+                  : "Inactif"}
             </span>
             <span
               className={`text-xs px-3 py-1 rounded-full font-medium ${
@@ -231,64 +256,86 @@ export default function AccountPage() {
               {isActive ? "Actif" : "Inactif"}
             </span>
           </div>
-          {profile.subscription_end_date && (
-            <p className="text-sm text-muted">
-              Renouvellement le{" "}
-              {new Date(profile.subscription_end_date).toLocaleDateString(
-                "fr-FR",
-                { day: "numeric", month: "long", year: "numeric" }
-              )}
-            </p>
+          {isPro && resetLabel && (
+            <p className="text-sm text-muted">Renouvellement le {resetLabel}</p>
           )}
         </div>
       </div>
 
       <div className="card mb-6">
-        <h2 className="font-semibold mb-4">Créations disponibles</h2>
-        {isYearly ? (
-          <p className="font-hero text-4xl font-bold text-accent">
-            ∞ Générations illimitées
-          </p>
-        ) : (
+        <h2 className="font-hero text-lg font-bold mb-4">Tes crédits</h2>
+        <p className="font-hero text-4xl font-bold text-accent mb-4">
+          {`${creditsBalance} crédit${creditsBalance > 1 ? "s" : ""} restant${creditsBalance > 1 ? "s" : ""}`}
+        </p>
+
+        {creditsLimit > 0 && (
           <div>
-            <p className="text-lg font-bold text-foreground mb-3">
-              {generationsUsed}/{MONTHLY_GENERATION_LIMIT} générations utilisées
+            <p className="text-sm text-muted mb-2">
+              {creditsUsed}/{creditsLimit} utilisés
             </p>
             <div className="h-2 bg-muted/20 rounded-full overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all ${
-                  limitReached ? "bg-[#C0392B]" : "bg-accent"
-                }`}
+                className="h-full rounded-full transition-all bg-accent"
                 style={{ width: `${Math.min(100, progressPct)}%` }}
               />
             </div>
-            {limitReached && (
-              <div className="mt-4">
-                <p className="text-sm text-[#C0392B] mb-3">
-                  Limite atteinte — renouvellement le {resetLabel}
-                </p>
-                <Link
-                  href="/pricing"
-                  className="inline-block bg-accent hover:bg-accent-hover text-white font-semibold text-sm py-2.5 px-4 rounded-xl transition-colors"
-                >
-                  Passer à l&apos;annuel →
-                </Link>
-              </div>
+          </div>
+        )}
+
+        {noCredits && isDiscovery && (
+          <div className="mt-4">
+            <p className="text-sm text-muted mb-3">
+              Tu as utilisé tes {DISCOVERY_CREDITS} crédits 😔
+            </p>
+            <Link
+              href="/pricing"
+              className="inline-block bg-accent hover:bg-accent-hover text-white font-semibold text-sm py-2.5 px-4 rounded-xl transition-colors"
+            >
+              Passer au Pro →
+            </Link>
+          </div>
+        )}
+
+        {noCredits && isPro && (
+          <div className="mt-4">
+            <p className="text-sm text-muted mb-1">
+              Tu as utilisé tes {PRO_CREDITS} crédits ce mois 😔
+            </p>
+            {resetLabel && (
+              <p className="text-sm text-muted mb-3">
+                Renouvellement le {resetLabel}
+              </p>
             )}
+            <button
+              type="button"
+              onClick={() => setCreditsModalOpen(true)}
+              className="inline-block text-[13px] text-[#8B7D6B] border border-[#8B7D6B] px-4 py-2 rounded-lg hover:bg-background transition-colors"
+            >
+              Racheter des crédits →
+            </button>
           </div>
         )}
       </div>
 
-      <div className="border-t border-muted/20 pt-6">
-        <a
-          href="/api/stripe/portal"
-          className="inline-block text-[13px] text-[#8B7D6B] border border-[#8B7D6B] px-4 py-2 rounded-lg hover:bg-background transition-colors"
-        >
-          Gérer mon abonnement
-        </a>
-      </div>
+      {isPro && (
+        <div className="border-t border-muted/20 pt-6">
+          <a
+            href="/api/stripe/portal"
+            className="inline-block text-[13px] text-[#8B7D6B] border border-[#8B7D6B] px-4 py-2 rounded-lg hover:bg-background transition-colors"
+          >
+            Gérer mon abonnement
+          </a>
+        </div>
+      )}
 
       <LogoutButton variant="account" />
+
+      <CreditsPurchaseModal
+        open={creditsModalOpen}
+        onClose={() => setCreditsModalOpen(false)}
+        loading={checkoutLoading}
+        onSelectPlan={handleCreditsPurchase}
+      />
     </div>
   );
 }

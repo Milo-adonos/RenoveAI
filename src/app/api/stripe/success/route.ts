@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
-import { activateSubscriptionFromSession } from "@/lib/activate-subscription";
 import { createClient } from "@/lib/supabase/server";
+import { activateSubscriptionFromSession } from "@/lib/activate-subscription";
+import { stripe } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
@@ -23,15 +23,14 @@ export async function GET(request: NextRequest) {
 
   try {
     const session = await stripe.checkout.sessions.retrieve(sessionId);
+    const sessionUserId =
+      session.metadata?.userId || session.metadata?.supabase_user_id;
 
-    if (session.metadata?.supabase_user_id !== user.id) {
+    if (sessionUserId !== user.id) {
       return NextResponse.redirect(new URL("/pricing", request.url));
     }
 
-    const activated = await activateSubscriptionFromSession(session);
-    if (!activated) {
-      return NextResponse.redirect(new URL("/pricing", request.url));
-    }
+    await activateSubscriptionFromSession(session);
 
     const response = NextResponse.redirect(
       new URL("/dashboard/creations?success=true", request.url)

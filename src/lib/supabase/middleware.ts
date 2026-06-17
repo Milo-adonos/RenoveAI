@@ -60,11 +60,16 @@ export async function updateSession(request: NextRequest) {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("subscription_status")
+      .select("subscription_status, subscription_plan")
       .eq("id", user.id)
       .maybeSingle();
 
-    if (!profile || profile.subscription_status !== "active") {
+    const hasDashboardAccess =
+      profile?.subscription_status === "active" &&
+      (profile.subscription_plan === "discovery" ||
+        profile.subscription_plan === "pro");
+
+    if (!hasDashboardAccess) {
       return redirectWithSessionCookies(
         new URL("/pricing", request.url),
         supabaseResponse

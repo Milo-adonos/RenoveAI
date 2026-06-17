@@ -13,7 +13,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { Generation } from "@/types/database";
 import { isBypassAuthEnabled, getDevBypassUser } from "@/lib/dev-bypass";
 import { addDevCreation } from "@/lib/dev-creations";
-import { MONTHLY_GENERATION_LIMIT } from "@/lib/generation-limits";
+import { PRO_CREDITS } from "@/lib/credits";
 import {
   clearCheckoutSession,
   getCheckoutSession,
@@ -21,7 +21,7 @@ import {
 } from "@/lib/session";
 
 import { resolveGenerationResponse } from "@/lib/poll-generation";
-const DEV_MONTHLY_KEY = "renove_dev_monthly_used";
+const DEV_CREDITS_KEY = "renove_dev_credits_used";
 
 export type PendingGeneration = {
   style?: string;
@@ -79,14 +79,14 @@ export function useDashboard() {
   return ctx;
 }
 
-function getDevMonthlyUsed(): number {
+function getDevCreditsUsed(): number {
   if (typeof window === "undefined") return 0;
-  return Number(localStorage.getItem(DEV_MONTHLY_KEY) || "0");
+  return Number(localStorage.getItem(DEV_CREDITS_KEY) || "0");
 }
 
-function incrementDevMonthlyUsed(): void {
-  const next = getDevMonthlyUsed() + 1;
-  localStorage.setItem(DEV_MONTHLY_KEY, String(next));
+function incrementDevCreditsUsed(): void {
+  const next = getDevCreditsUsed() + 1;
+  localStorage.setItem(DEV_CREDITS_KEY, String(next));
 }
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
@@ -112,10 +112,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
       if (isBypassAuthEnabled()) {
         const devUser = getDevBypassUser();
-        if (devUser?.subscription_plan === "monthly") {
-          const used = getDevMonthlyUsed();
-          if (used >= MONTHLY_GENERATION_LIMIT) {
-            return "Tu as utilisé tes 30 générations ce mois.";
+        if (devUser?.subscription_plan === "discovery") {
+          const used = getDevCreditsUsed();
+          if (used >= 5) {
+            return "Tu n'as plus de crédits.";
           }
         }
 
@@ -153,8 +153,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
             custom_prompt: input.customPrompt || null,
           });
 
-          if (devUser?.subscription_plan === "monthly") {
-            incrementDevMonthlyUsed();
+          if (devUser?.subscription_plan === "discovery") {
+            incrementDevCreditsUsed();
           }
 
           setPendingGeneration(null);
@@ -173,12 +173,20 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       if (limitRes.ok) {
         const limit = await limitRes.json();
         if (!limit.canGenerate) {
-          const reset = new Date(limit.resetDate).toLocaleDateString("fr-FR", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          });
-          return `Tu as utilisé tes 30 générations ce mois. Renouvellement le ${reset}.`;
+          if (limit.plan === "discovery") {
+            return "Tu n'as plus de crédits. Passe au Pro pour continuer.";
+          }
+          if (limit.plan === "pro") {
+            const reset = limit.resetDate
+              ? new Date(limit.resetDate).toLocaleDateString("fr-FR", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })
+              : "";
+            return `Tu as utilisé tes ${PRO_CREDITS} crédits ce mois.${reset ? ` Renouvellement le ${reset}.` : ""}`;
+          }
+          return "Tu n'as plus de crédits.";
         }
       }
 

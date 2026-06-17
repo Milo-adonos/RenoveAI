@@ -9,43 +9,33 @@ import {
 import { getSupabaseConfigStatus } from "@/lib/supabase/config";
 import { uploadImageToStorage } from "@/lib/supabase/storage";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import {
-  canGenerateWithProfile,
-  getNextCalendarMonthStart,
-  isMonthlyPlan,
-  MONTHLY_GENERATION_LIMIT,
-  shouldResetMonthlyGenerations,
-} from "@/lib/generation-limits";
+import { refreshProCreditsIfDue } from "@/lib/credits-activation";
+import { canGenerateWithCredits } from "@/lib/credits";
 
-async function getProfileWithReset(
+async function getProfileWithCredits(
   serviceClient: Awaited<ReturnType<typeof createServiceClient>>,
   userId: string
 ) {
   const { data: profile } = await serviceClient
     .from("profiles")
     .select(
-      "subscription_plan, subscription_status, generations_used, generations_reset_date"
+      "credits_balance, subscription_status, subscription_plan, credits_reset_date"
     )
     .eq("id", userId)
     .single();
 
   if (!profile) return null;
 
-  let used = profile.generations_used ?? 0;
+  const creditsBalance = await refreshProCreditsIfDue(
+    serviceClient,
+    userId,
+    profile
+  );
 
-  if (shouldResetMonthlyGenerations(profile.generations_reset_date)) {
-    await serviceClient
-      .from("profiles")
-      .update({
-        generations_used: 0,
-        generations_reset_date: getNextCalendarMonthStart().toISOString(),
-      })
-      .eq("id", userId);
-    used = 0;
-    profile.generations_used = 0;
-  }
-
-  return { profile, used };
+  return {
+    ...profile,
+    credits_balance: creditsBalance,
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -60,27 +50,18 @@ export async function POST(request: NextRequest) {
     }
 
     const serviceClient = await createServiceClient();
-    const profileData = await getProfileWithReset(serviceClient, user.id);
+    const profile = await getProfileWithCredits(serviceClient, user.id);
 
-    if (!profileData) {
+    if (!profile) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
-
-    const { profile, used } = profileData;
 
     if (profile.subscription_status !== "active") {
       return NextResponse.json({ error: "no_subscription" }, { status: 403 });
     }
 
-    if (
-      isMonthlyPlan(profile.subscription_plan) &&
-      used >= MONTHLY_GENERATION_LIMIT
-    ) {
-      return NextResponse.json({ error: "limit_reached" }, { status: 403 });
-    }
-
-    if (!canGenerateWithProfile(profile, used)) {
-      return NextResponse.json({ error: "limit_reached" }, { status: 403 });
+    if (!canGenerateWithCredits(profile)) {
+      return NextResponse.json({ error: "no_credits" }, { status: 403 });
     }
 
     const body = await request.json();
@@ -89,18 +70,8 @@ export async function POST(request: NextRequest) {
     console.log("[generate] Étape 1 — Requête reçue");
     console.log("[generate] Config Supabase:", getSupabaseConfigStatus());
     console.log("[generate] imageUrl présent:", !!imageUrl);
-    console.log(
-      "[generate] imageUrl type:",
-      imageUrl?.startsWith("data:")
-        ? "base64"
-        : imageUrl?.startsWith("http")
-          ? "url"
-          : "inconnu"
-    );
-    console.log("[generate] style:", style);
 
     if (!imageUrl) {
-      console.error("[generate] Erreur — imageUrl manquant");
       return NextResponse.json(
         { error: "imageUrl is required" },
         { status: 400 }
@@ -110,8 +81,6 @@ export async function POST(request: NextRequest) {
     let finalImageUrl = imageUrl;
 
     if (imageUrl.startsWith("data:")) {
-      console.log("[generate] Étape 2 — Upload base64 vers Supabase Storage...");
-
       const base64 = imageUrl.split(",")[1];
       if (!base64) {
         return NextResponse.json(
@@ -122,13 +91,9 @@ export async function POST(request: NextRequest) {
 
       const buffer = Buffer.from(base64, "base64");
       const path = `temp/${Date.now()}-upload.jpg`;
-
-      console.log("[generate] Taille buffer:", buffer.length, "bytes");
-
       const result = await uploadImageToStorage(buffer, path, "originals");
 
       if ("error" in result) {
-        console.error("[generate] Étape 2 ÉCHOUÉE:", result.error);
         return NextResponse.json(
           {
             error: `Échec upload Supabase : ${result.error}`,
@@ -139,25 +104,15 @@ export async function POST(request: NextRequest) {
       }
 
       finalImageUrl = result.url;
-      console.log("[generate] Étape 2 OK — URL publique:", finalImageUrl);
-    } else {
-      console.log(
-        "[generate] Étape 2 — URL déjà publique, pas d'upload nécessaire"
-      );
     }
 
     const fullPrompt = buildGenerationPrompt(style, customPrompt);
 
-    console.log("[generate] Étape 3 — Prompt prêt", fullPrompt.length, "car.");
-    console.log("[generate] Étape 4 — Génération nano-banana-2...");
-
-    const incrementMonthlyUsage = async () => {
-      if (isMonthlyPlan(profile.subscription_plan)) {
-        await serviceClient
-          .from("profiles")
-          .update({ generations_used: used + 1 })
-          .eq("id", user.id);
-      }
+    const debitCredit = async () => {
+      await serviceClient
+        .from("profiles")
+        .update({ credits_balance: (profile.credits_balance ?? 0) - 1 })
+        .eq("id", user.id);
     };
 
     if (isFalConfigured()) {
@@ -167,8 +122,7 @@ export async function POST(request: NextRequest) {
           style,
           customPrompt
         );
-        await incrementMonthlyUsage();
-        console.log("[generate] fal nano-banana-2 OK");
+        await debitCredit();
         return NextResponse.json({
           generatedUrl,
           style,
@@ -176,10 +130,7 @@ export async function POST(request: NextRequest) {
           sync: true,
         });
       } catch (falError) {
-        console.warn(
-          "[generate] fal nano-banana-2 échoué, repli Kie:",
-          falError
-        );
+        console.warn("[generate] fal failed, fallback Kie:", falError);
       }
     }
 
@@ -191,8 +142,6 @@ export async function POST(request: NextRequest) {
     }
 
     const taskId = await createGenerationTask(finalImageUrl, fullPrompt);
-    console.log("[generate] Kie nano-banana-2 task ID:", taskId);
-
     return NextResponse.json({ taskId, style, customPrompt });
   } catch (error) {
     console.error("[generate] Erreur fatale:", error);

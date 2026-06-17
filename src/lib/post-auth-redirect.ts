@@ -25,7 +25,12 @@ export async function resolvePostAuthRedirectPath(
   }
 
   const plan = options?.selectedPlan;
-  if (plan === "monthly" || plan === "yearly") {
+  if (
+    plan === "discovery" ||
+    plan === "pro" ||
+    plan === "credits_5" ||
+    plan === "credits_15"
+  ) {
     return `/api/stripe/checkout?plan=${plan}`;
   }
 

@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import {
-  canGenerateWithProfile,
-  getNextCalendarMonthStart,
-  isMonthlyPlan,
-  MONTHLY_GENERATION_LIMIT,
-  shouldResetMonthlyGenerations,
-} from "@/lib/generation-limits";
+  canGenerateWithCredits,
+  getCreditsUsed,
+  getPlanCreditLimit,
+  PRO_CREDITS,
+  DISCOVERY_CREDITS,
+} from "@/lib/credits";
+import { refreshProCreditsIfDue } from "@/lib/credits-activation";
 
 export async function GET() {
   try {
@@ -23,7 +24,7 @@ export async function GET() {
     const { data: profile } = await serviceClient
       .from("profiles")
       .select(
-        "subscription_plan, subscription_status, generations_used, generations_reset_date"
+        "credits_balance, subscription_status, subscription_plan, credits_reset_date"
       )
       .eq("id", user.id)
       .single();
@@ -32,36 +33,28 @@ export async function GET() {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    let used = profile.generations_used ?? 0;
-    let resetDate = profile.generations_reset_date;
+    const creditsBalance = await refreshProCreditsIfDue(
+      serviceClient,
+      user.id,
+      profile
+    );
 
-    if (shouldResetMonthlyGenerations(resetDate)) {
-      used = 0;
-      resetDate = getNextCalendarMonthStart().toISOString();
-      await serviceClient
-        .from("profiles")
-        .update({
-          generations_used: 0,
-          generations_reset_date: resetDate,
-        })
-        .eq("id", user.id);
-    }
-
-    const plan = profile.subscription_plan || "monthly";
-    const isMonthly = isMonthlyPlan(plan);
+    const enrichedProfile = { ...profile, credits_balance: creditsBalance };
+    const plan = profile.subscription_plan || "inactive";
+    const creditLimit = getPlanCreditLimit(plan);
 
     return NextResponse.json({
       plan,
       status: profile.subscription_status,
-      isMonthly,
-      isYearly: !isMonthly && plan === "yearly",
-      monthlyLimit: MONTHLY_GENERATION_LIMIT,
-      generationsUsed: used,
-      generationsRemaining: isMonthly
-        ? Math.max(0, MONTHLY_GENERATION_LIMIT - used)
-        : null,
-      canGenerate: canGenerateWithProfile(profile, used),
-      resetDate,
+      creditsBalance,
+      creditsLimit: creditLimit,
+      creditsUsed: getCreditsUsed(enrichedProfile),
+      canGenerate: canGenerateWithCredits(enrichedProfile),
+      resetDate: profile.credits_reset_date,
+      isDiscovery: plan === "discovery",
+      isPro: plan === "pro",
+      discoveryLimit: DISCOVERY_CREDITS,
+      proLimit: PRO_CREDITS,
     });
   } catch (error) {
     console.error("[generations/limit] Error:", error);
