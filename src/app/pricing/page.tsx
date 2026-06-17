@@ -95,7 +95,7 @@ function setSelectedPlan(plan: PricingPlan) {
 export default function PricingPage() {
   const router = useRouter();
   const captureFunnel = useFunnelCapture();
-  const [selectedPlan, setSelectedPlanState] = useState<DisplayPlan>("pro");
+  const [selectedPlan, setSelectedPlanState] = useState<DisplayPlan>("discovery");
   const [loading, setLoading] = useState(false);
   const [timerEnd, setTimerEnd] = useState<number | null>(null);
   const [remainingMs, setRemainingMs] = useState(0);
