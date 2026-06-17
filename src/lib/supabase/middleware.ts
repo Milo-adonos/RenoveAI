@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { hasDashboardAccess } from "@/lib/credits";
 
 function redirectWithSessionCookies(
   url: URL,
@@ -64,12 +65,12 @@ export async function updateSession(request: NextRequest) {
       .eq("id", user.id)
       .maybeSingle();
 
-    const hasDashboardAccess =
-      profile?.subscription_status === "active" &&
-      (profile.subscription_plan === "discovery" ||
-        profile.subscription_plan === "pro");
+    const canAccessDashboard = hasDashboardAccess(
+      profile?.subscription_status,
+      profile?.subscription_plan
+    );
 
-    if (!hasDashboardAccess) {
+    if (!canAccessDashboard) {
       return redirectWithSessionCookies(
         new URL("/pricing", request.url),
         supabaseResponse

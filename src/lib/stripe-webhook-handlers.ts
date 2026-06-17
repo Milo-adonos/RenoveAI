@@ -2,12 +2,13 @@ import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   applyCheckoutSessionCredits,
-  resetProCreditsForCustomer,
+  resetCreditsOnRenewalForCustomer,
 } from "@/lib/credits-activation";
 import {
   getStripeCustomerId,
   getSubscriptionPeriodEnd,
   resolveUserIdFromCustomerId,
+  syncSubscriptionToProfile,
 } from "@/lib/subscription-sync";
 
 export async function handleCheckoutSessionCompleted(
@@ -27,31 +28,11 @@ export async function handleSubscriptionUpdated(
   supabase: SupabaseClient,
   subscription: Stripe.Subscription
 ): Promise<void> {
-  const customerId = getStripeCustomerId(subscription.customer);
-  if (!customerId) return;
-
-  const status =
-    subscription.status === "active" || subscription.status === "trialing"
-      ? "active"
-      : subscription.status === "canceled"
-        ? "canceled"
-        : "inactive";
-
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      subscription_status: status,
-      subscription_end_date: getSubscriptionPeriodEnd(subscription),
-    })
-    .eq("stripe_customer_id", customerId)
-    .eq("subscription_plan", "pro");
-
-  if (error) {
-    throw error;
-  }
+  const result = await syncSubscriptionToProfile(supabase, subscription);
+  if (!result.ok) return;
 
   console.log(
-    `[webhook] customer.subscription.updated: ${subscription.id} status=${subscription.status}`
+    `[webhook] customer.subscription.updated: ${subscription.id} status=${subscription.status} plan=${subscription.metadata?.plan ?? "unknown"}`
   );
 }
 
@@ -88,10 +69,10 @@ export async function handleInvoicePaymentSucceeded(
   const customerId = getStripeCustomerId(invoice.customer);
   if (!customerId || !invoice.subscription) return;
 
-  await resetProCreditsForCustomer(supabase, customerId);
+  await resetCreditsOnRenewalForCustomer(supabase, customerId);
 
   console.log(
-    `[webhook] invoice.payment_succeeded: reset pro credits for ${customerId}`
+    `[webhook] invoice.payment_succeeded: reset credits for ${customerId}`
   );
 }
 

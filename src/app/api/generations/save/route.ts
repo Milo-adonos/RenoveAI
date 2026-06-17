@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { persistGeneratedImageFromUrl } from "@/lib/supabase/storage";
-import { canGenerateWithCredits } from "@/lib/credits";
-import { refreshProCreditsIfDue } from "@/lib/credits-activation";
+import { canGenerateWithCredits, shouldDebitCredits } from "@/lib/credits";
+import { refreshCreditsIfDue } from "@/lib/credits-activation";
 
 export async function POST(request: NextRequest) {
   try {
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "no_subscription" }, { status: 403 });
     }
 
-    const creditsBalance = await refreshProCreditsIfDue(
+    const creditsBalance = await refreshCreditsIfDue(
       serviceClient,
       user.id,
       profile
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    if (asyncCompletion) {
+    if (asyncCompletion && shouldDebitCredits(profile.subscription_plan)) {
       await serviceClient
         .from("profiles")
         .update({ credits_balance: creditsBalance - 1 })

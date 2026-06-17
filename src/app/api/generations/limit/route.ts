@@ -4,10 +4,14 @@ import {
   canGenerateWithCredits,
   getCreditsUsed,
   getPlanCreditLimit,
+  isLegacyMonthlyPlan,
+  isProPlan,
+  isYearlyPlan,
   PRO_CREDITS,
   DISCOVERY_CREDITS,
+  LEGACY_MONTHLY_CREDITS,
 } from "@/lib/credits";
-import { refreshProCreditsIfDue } from "@/lib/credits-activation";
+import { refreshCreditsIfDue } from "@/lib/credits-activation";
 
 export async function GET() {
   try {
@@ -33,7 +37,7 @@ export async function GET() {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    const creditsBalance = await refreshProCreditsIfDue(
+    const creditsBalance = await refreshCreditsIfDue(
       serviceClient,
       user.id,
       profile
@@ -52,9 +56,13 @@ export async function GET() {
       canGenerate: canGenerateWithCredits(enrichedProfile),
       resetDate: profile.credits_reset_date,
       isDiscovery: plan === "discovery",
-      isPro: plan === "pro",
+      isPro: isProPlan(plan),
+      isYearly: isYearlyPlan(plan),
+      isMonthly: isLegacyMonthlyPlan(plan),
+      isUnlimited: isYearlyPlan(plan),
       discoveryLimit: DISCOVERY_CREDITS,
       proLimit: PRO_CREDITS,
+      monthlyLimit: LEGACY_MONTHLY_CREDITS,
     });
   } catch (error) {
     console.error("[generations/limit] Error:", error);

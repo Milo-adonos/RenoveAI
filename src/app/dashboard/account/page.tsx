@@ -8,9 +8,15 @@ import { isBypassAuthEnabled, getDevBypassUser } from "@/lib/dev-bypass";
 import {
   DISCOVERY_CREDITS,
   PRO_CREDITS,
+  LEGACY_MONTHLY_CREDITS,
   getCreditsProgress,
   getCreditsUsed,
   getPlanCreditLimit,
+  getPlanDisplayName,
+  isDiscoveryPlan,
+  isLegacyMonthlyPlan,
+  isProPlan,
+  isYearlyPlan,
 } from "@/lib/credits";
 import { LogoutButton } from "@/components/LogoutButton";
 import { CreditsPurchaseModal } from "@/components/CreditsPurchaseModal";
@@ -18,8 +24,9 @@ import { CreditsPurchaseModal } from "@/components/CreditsPurchaseModal";
 type LimitInfo = {
   plan: string;
   creditsBalance: number;
-  creditsLimit: number;
+  creditsLimit: number | null;
   resetDate: string | null;
+  canGenerate?: boolean;
 };
 
 export default function AccountPage() {
@@ -84,6 +91,7 @@ export default function AccountPage() {
           creditsBalance: limitData.creditsBalance,
           creditsLimit: limitData.creditsLimit,
           resetDate: limitData.resetDate,
+          canGenerate: limitData.canGenerate,
         });
       }
 
@@ -106,8 +114,10 @@ export default function AccountPage() {
 
   const isActive = profile.subscription_status === "active";
   const plan = profile.subscription_plan || "inactive";
-  const isDiscovery = plan === "discovery";
-  const isPro = plan === "pro";
+  const isDiscovery = isDiscoveryPlan(plan);
+  const isPro = isProPlan(plan);
+  const isMonthly = isLegacyMonthlyPlan(plan);
+  const isYearly = isYearlyPlan(plan);
   const firstName = profile.full_name?.split(" ")[0] || "Utilisateur";
   const initial = firstName[0]?.toUpperCase() || "?";
   const creditsBalance = limit?.creditsBalance ?? profile.credits_balance ?? 0;
@@ -120,7 +130,7 @@ export default function AccountPage() {
     ...profile,
     credits_balance: creditsBalance,
   });
-  const noCredits = creditsBalance <= 0;
+  const noCredits = limit?.canGenerate === false || (!isYearly && creditsBalance <= 0);
 
   async function saveName() {
     if (!profile) return;
@@ -240,11 +250,7 @@ export default function AccountPage() {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className="bg-accent text-white text-xs font-semibold px-3 py-1 rounded-full">
-              {isDiscovery
-                ? "Découverte — 4,90€"
-                : isPro
-                  ? "Pro — 12,99€/mois"
-                  : "Inactif"}
+              {getPlanDisplayName(plan)}
             </span>
             <span
               className={`text-xs px-3 py-1 rounded-full font-medium ${
@@ -256,19 +262,28 @@ export default function AccountPage() {
               {isActive ? "Actif" : "Inactif"}
             </span>
           </div>
-          {isPro && resetLabel && (
+          {(isPro || isMonthly) && resetLabel && (
             <p className="text-sm text-muted">Renouvellement le {resetLabel}</p>
+          )}
+          {isYearly && (
+            <p className="text-sm text-muted">Créations illimitées</p>
           )}
         </div>
       </div>
 
       <div className="card mb-6">
         <h2 className="font-hero text-lg font-bold mb-4">Tes crédits</h2>
-        <p className="font-hero text-4xl font-bold text-accent mb-4">
-          {`${creditsBalance} crédit${creditsBalance > 1 ? "s" : ""} restant${creditsBalance > 1 ? "s" : ""}`}
-        </p>
+        {isYearly ? (
+          <p className="font-hero text-2xl font-bold text-accent mb-4">
+            Illimité
+          </p>
+        ) : (
+          <p className="font-hero text-4xl font-bold text-accent mb-4">
+            {`${creditsBalance} crédit${creditsBalance > 1 ? "s" : ""} restant${creditsBalance > 1 ? "s" : ""}`}
+          </p>
+        )}
 
-        {creditsLimit > 0 && (
+        {creditsLimit !== null && creditsLimit > 0 && (
           <div>
             <p className="text-sm text-muted mb-2">
               {creditsUsed}/{creditsLimit} utilisés
@@ -315,9 +330,28 @@ export default function AccountPage() {
             </button>
           </div>
         )}
+
+        {noCredits && isMonthly && (
+          <div className="mt-4">
+            <p className="text-sm text-muted mb-1">
+              Tu as utilisé tes {LEGACY_MONTHLY_CREDITS} crédits ce mois 😔
+            </p>
+            {resetLabel && (
+              <p className="text-sm text-muted mb-3">
+                Renouvellement le {resetLabel}
+              </p>
+            )}
+            <Link
+              href="/pricing"
+              className="inline-block text-[13px] text-[#8B7D6B] border border-[#8B7D6B] px-4 py-2 rounded-lg hover:bg-background transition-colors"
+            >
+              Voir les nouvelles offres →
+            </Link>
+          </div>
+        )}
       </div>
 
-      {isPro && (
+      {(isPro || isMonthly || isYearly) && (
         <div className="border-t border-muted/20 pt-6">
           <a
             href="/api/stripe/portal"

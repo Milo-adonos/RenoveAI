@@ -53,9 +53,9 @@ async function createCheckoutSession(
 
   if (
     (plan === "credits_5" || plan === "credits_15") &&
-    profile?.subscription_plan !== "pro"
+    !["pro", "monthly", "yearly"].includes(profile?.subscription_plan ?? "")
   ) {
-    throw new Error("Credit packs require an active Pro subscription");
+    throw new Error("Credit packs require an active subscription");
   }
 
   let customerId = profile?.stripe_customer_id;

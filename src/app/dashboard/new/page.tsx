@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CreationForm } from "@/components/CreationForm";
 import { CreditsPurchaseModal } from "@/components/CreditsPurchaseModal";
-import { PRO_CREDITS } from "@/lib/credits";
+import { PRO_CREDITS, LEGACY_MONTHLY_CREDITS } from "@/lib/credits";
 
 type LimitState = {
   plan: string;
@@ -51,9 +51,10 @@ export default function NewCreationPage() {
     return <div className="animate-pulse text-muted">Chargement...</div>;
   }
 
-  const noCredits = limit && limit.creditsBalance <= 0;
+  const noCredits = limit && !limit.canGenerate;
   const isDiscovery = limit?.plan === "discovery";
   const isPro = limit?.plan === "pro";
+  const isMonthly = limit?.plan === "monthly";
 
   if (noCredits) {
     const resetLabel = limit?.resetDate
@@ -126,6 +127,39 @@ export default function NewCreationPage() {
               loading={checkoutLoading}
               onSelectPlan={handleCreditsPurchase}
             />
+          </>
+        )}
+
+        {isMonthly && (
+          <>
+            <p className="font-hero text-2xl font-bold text-foreground mb-3">
+              Tu as utilisé tes {LEGACY_MONTHLY_CREDITS} crédits ce mois 😔
+            </p>
+            {resetLabel && (
+              <p
+                className="mb-8"
+                style={{
+                  fontFamily: "var(--font-inter), Inter, sans-serif",
+                  fontSize: "14px",
+                  color: "#8B7D6B",
+                }}
+              >
+                Renouvellement le {resetLabel}
+              </p>
+            )}
+            <Link
+              href="/pricing"
+              className="pricing-glow-cta inline-block w-full text-white font-bold"
+              style={{
+                fontFamily: "var(--font-inter), Inter, sans-serif",
+                fontSize: "16px",
+                backgroundColor: "#A0522D",
+                borderRadius: "50px",
+                padding: "18px 20px",
+              }}
+            >
+              Voir les nouvelles offres →
+            </Link>
           </>
         )}
       </div>

@@ -9,8 +9,8 @@ import {
 import { getSupabaseConfigStatus } from "@/lib/supabase/config";
 import { uploadImageToStorage } from "@/lib/supabase/storage";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { refreshProCreditsIfDue } from "@/lib/credits-activation";
-import { canGenerateWithCredits } from "@/lib/credits";
+import { refreshCreditsIfDue } from "@/lib/credits-activation";
+import { canGenerateWithCredits, shouldDebitCredits } from "@/lib/credits";
 
 async function getProfileWithCredits(
   serviceClient: Awaited<ReturnType<typeof createServiceClient>>,
@@ -26,7 +26,7 @@ async function getProfileWithCredits(
 
   if (!profile) return null;
 
-  const creditsBalance = await refreshProCreditsIfDue(
+  const creditsBalance = await refreshCreditsIfDue(
     serviceClient,
     userId,
     profile
@@ -109,6 +109,8 @@ export async function POST(request: NextRequest) {
     const fullPrompt = buildGenerationPrompt(style, customPrompt);
 
     const debitCredit = async () => {
+      if (!shouldDebitCredits(profile.subscription_plan)) return;
+
       await serviceClient
         .from("profiles")
         .update({ credits_balance: (profile.credits_balance ?? 0) - 1 })

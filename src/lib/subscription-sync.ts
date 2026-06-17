@@ -3,8 +3,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export function normalizeSubscriptionPlan(
   plan: string | null | undefined
-): "monthly" | "yearly" {
+): string {
   if (plan === "yearly" || plan === "annual") return "yearly";
+  if (plan === "discovery") return "discovery";
+  if (plan === "pro") return "pro";
+  if (plan === "weekly") return "weekly";
   return "monthly";
 }
 
