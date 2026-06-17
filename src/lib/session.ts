@@ -96,6 +96,23 @@ export function clearCheckoutSession() {
   sessionStorage.removeItem(ROOM_TYPE_KEY);
 }
 
+const AWAITING_GENERATION_KEY = "renove_awaiting_generation";
+
+export function markAwaitingPostCheckoutGeneration() {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(AWAITING_GENERATION_KEY, "1");
+}
+
+export function clearAwaitingPostCheckoutGeneration() {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(AWAITING_GENERATION_KEY);
+}
+
+export function isAwaitingPostCheckoutGeneration(): boolean {
+  if (typeof window === "undefined") return false;
+  return sessionStorage.getItem(AWAITING_GENERATION_KEY) === "1";
+}
+
 export type SubscriptionPlan =
   | "discovery"
   | "pro"

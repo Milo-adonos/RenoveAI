@@ -11,6 +11,7 @@ import { FUNNEL } from "@/lib/funnel-events";
 import { useFunnelCapture } from "@/hooks/useFunnelCapture";
 import { createClient } from "@/lib/supabase/client";
 import { CreditsPurchaseModal } from "@/components/CreditsPurchaseModal";
+import { markAwaitingPostCheckoutGeneration } from "@/lib/session";
 
 const UNLOCK_COUNT_KEY = "renove_pricing_unlock_count";
 const UNLOCK_RESET_HOUR = 15;
@@ -151,6 +152,7 @@ export default function PricingPage() {
     captureFunnel(FUNNEL.unlockClicked, { plan });
     captureFunnel(FUNNEL.planSelected, { plan });
     setSelectedPlan(plan);
+    markAwaitingPostCheckoutGeneration();
 
     const supabase = createClient();
     const {

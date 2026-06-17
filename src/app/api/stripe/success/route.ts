@@ -30,10 +30,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL("/pricing", request.url));
     }
 
-    await activateSubscriptionFromSession(session);
+    const activated = await activateSubscriptionFromSession(session);
+
+    if (!activated) {
+      console.error(
+        "[stripe/success] Credit activation failed for session",
+        sessionId
+      );
+    }
 
     const response = NextResponse.redirect(
-      new URL("/dashboard/creations?success=true", request.url)
+      new URL("/dashboard/creations?success=true&generate=pending", request.url)
     );
     response.cookies.set("selectedPlan", "", { path: "/", maxAge: 0 });
     return response;

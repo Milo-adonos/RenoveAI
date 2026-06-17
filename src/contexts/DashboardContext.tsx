@@ -15,9 +15,12 @@ import { isBypassAuthEnabled, getDevBypassUser } from "@/lib/dev-bypass";
 import { addDevCreation } from "@/lib/dev-creations";
 import { PRO_CREDITS } from "@/lib/credits";
 import {
+  clearAwaitingPostCheckoutGeneration,
   clearCheckoutSession,
   getCheckoutSession,
   getGeneration,
+  isAwaitingPostCheckoutGeneration,
+  markAwaitingPostCheckoutGeneration,
 } from "@/lib/session";
 
 import { resolveGenerationResponse } from "@/lib/poll-generation";
@@ -269,10 +272,16 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (postCheckoutStartedRef.current) return;
-    if (searchParams.get("success") !== "true") return;
 
     const checkout = getCheckoutSession();
     if (!checkout) return;
+
+    const urlTrigger =
+      searchParams.get("generate") === "pending" ||
+      searchParams.get("success") === "true";
+    const awaitingFlag = isAwaitingPostCheckoutGeneration();
+
+    if (!urlTrigger && !awaitingFlag) return;
 
     postCheckoutStartedRef.current = true;
 
@@ -281,17 +290,41 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       checkout.selectedStyle === "custom"
         ? session?.style
         : checkout.selectedStyle;
-
-    clearCheckoutSession();
-
-    void startGeneration({
+    const generationInput = {
       originalUrl: checkout.originalImageUrl,
       originalPath: session?.originalPath,
       originalWidth: session?.originalWidth ?? 1600,
       originalHeight: session?.originalHeight ?? 1200,
       style: style || undefined,
       customPrompt: session?.customPrompt,
-    });
+    };
+
+    async function runPostCheckoutGeneration() {
+      for (let attempt = 0; attempt < 20; attempt++) {
+        const limitRes = await fetch("/api/generations/limit");
+        if (limitRes.ok) {
+          const limit = await limitRes.json();
+          if (limit.canGenerate) break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+
+      clearCheckoutSession();
+      clearAwaitingPostCheckoutGeneration();
+
+      const url = new URL(window.location.href);
+      url.searchParams.delete("generate");
+      window.history.replaceState({}, "", url.pathname + url.search);
+
+      const error = await startGeneration(generationInput);
+
+      if (error) {
+        console.error("[dashboard] Post-checkout generation failed:", error);
+        postCheckoutStartedRef.current = false;
+      }
+    }
+
+    void runPostCheckoutGeneration();
   }, [searchParams, startGeneration]);
 
   return (

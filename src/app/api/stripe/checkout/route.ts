@@ -86,7 +86,7 @@ async function createCheckoutSession(
     payment_method_types: ["card"],
     line_items: [{ price: config.priceId, quantity: 1 }],
     metadata,
-    success_url: `${baseUrl}/dashboard?success=true&session_id={CHECKOUT_SESSION_ID}`,
+    success_url: `${baseUrl}/api/stripe/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${baseUrl}/pricing`,
     allow_promotion_codes: true,
     locale: "fr",

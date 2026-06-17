@@ -9,7 +9,7 @@ import { AI_CHOICE_STYLE } from "@/lib/styles";
 import { compressImageForGeneration } from "@/lib/compress-image";
 import { FUNNEL } from "@/lib/funnel-events";
 import { useFunnelCapture } from "@/hooks/useFunnelCapture";
-import { saveGeneration, saveCheckoutSession } from "@/lib/session";
+import { saveGeneration, saveCheckoutSession, markAwaitingPostCheckoutGeneration } from "@/lib/session";
 import { createClient } from "@/lib/supabase/client";
 
 export default function UploadPage() {
@@ -96,6 +96,7 @@ export default function UploadPage() {
           selectedStyle,
           originalImageUrl: dataUrl,
         });
+        markAwaitingPostCheckoutGeneration();
         router.push("/loading");
         return;
       }
@@ -119,6 +120,7 @@ export default function UploadPage() {
         selectedStyle,
         originalImageUrl: urlData.publicUrl,
       });
+      markAwaitingPostCheckoutGeneration();
 
       router.push("/loading");
     } catch {
